@@ -1,286 +1,537 @@
-# World Engine
+# World Engine Specification
 
-## Status
-Draft v0.1
-
----
-
-# 1. 개요 (Overview)
-
-## 1.1 목적 (Purpose)
-World Engine은 AI Narrative Engine의 핵심 구성 요소로, 플레이어가 탐험하는 세계의 상태(World State), 시간의 흐름(Time Progression), 지리와 지역 정보(Locations), 환경 변화(Environmental Events) 및 세력의 움직임(Factions)을 관리하고 자율적으로 진행시키는 역할을 수행한다. 
-
-## 1.2 역할 및 책임 범위 (Scope of Responsibility)
-World Engine의 주요 책임은 다음과 같다:
-1. **세계 상태 유지 및 제공:** 세션 전체에서 유지되는 일관된 세계 상태 데이터를 관리한다.
-2. **시간 경과 처리:** 플레이어의 행동(이동, 탐색, 전투, 휴식 등)과 연동하여 세계 시간을 갱신한다.
-3. **지역 및 공간 상태 관리:** 지리적 연결 정보와 각 지역의 동적 상태(위협도, 점령 세력, 자원 등)를 갱신한다.
-4. **환경 시뮬레이션:** 날씨, 계절, 자연 재해 등 플레이어의 제어를 벗어난 전역적/지역적 환경 변화를 처리한다.
-5. **세계 변화 추적 및 반영:** 플레이어의 행동 결과와 NPC/세력의 자율 행동이 세계 상태에 미치는 영향을 계산하고 누적한다.
-6. **세계 상태 스냅샷 제공:** Save Engine과 Memory Engine이 상태를 직렬화하고 아카이브할 수 있도록 규격화된 스냅샷을 생성한다.
-
-## 1.3 다른 엔진과의 상호작용 (Architecture & Interactions)
-```
-┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐
-│ Compiler Engine │ ───>  │ Director Engine │ ───>  │  World Engine   │
-└─────────────────┘       └─────────────────┘       └─────────────────┘
-                                                             │
- ┌───────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────┐
- │                                                           │                                                          │
- ▼                                                           ▼                                                          ▼
-┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐
-│   NPC Engine    │       │ Mission Engine  │       │  Memory Engine  │       │   Save Engine   │       │    QA Engine    │
-└─────────────────┘       └─────────────────┘       └─────────────────┘       └─────────────────┘       └─────────────────┘
-```
-- **Director Engine:** World Engine이 제공하는 시간, 지역 상태, 환경 변화 결과를 기반으로 플레이어에게 제공할 장면 묘사(NAR)를 구성한다.
-- **Save Engine:** World Engine이 직렬화한 세계 상태 스냅샷을 저장 파일에 영구 기록하며, 로드 시 이를 다시 World Engine에 주입한다.
-- **Memory Engine:** 세계의 역사적 변화와 장기적 사건을 요약하고 컨텍스트로 보존할 수 있도록 World Engine의 상태 변화 로그를 전달받는다.
-- **NPC Engine:** 세계의 시간 흐름과 환경 상태, 소속 세력의 자원 상태를 World Engine으로부터 조회하여 NPC의 목표와 행동 방침을 갱신한다.
-- **QA Engine:** World Engine이 갱신한 세계 상태가 이전 세션의 규칙 및 인과관계와 모순되지 않는지 일관성을 검증한다.
+**문서 식별자:** `engines/World/WorldEngine.md`
+**버전:** v1.0.0
+**상태:** Draft
+**최종 수정:** 2026-06-26
+**참조:** `core/CoreSpec.md` §5.4, §11, §13
 
 ---
 
-# 2. 세계 상태(World State) 데이터 구조 정의
+## 목차
 
-세계 상태는 세계관 독립적인 범용 데이터 구조를 가지며, YAML 또는 JSON 형식으로 직렬화할 수 있어야 한다. 
+1. [목적](#1-목적)
+2. [책임 범위](#2-책임-범위)
+3. [아키텍처 및 인터페이스](#3-아키텍처-및-인터페이스)
+4. [세계 상태 데이터 구조](#4-세계-상태-데이터-구조)
+5. [세계 초기화 프로토콜](#5-세계-초기화-프로토콜)
+6. [시간 흐름 시스템](#6-시간-흐름-시스템)
+7. [지역 상태 관리](#7-지역-상태-관리)
+8. [환경 시스템](#8-환경-시스템)
+9. [세계 자율 진행](#9-세계-자율-진행)
+10. [WorldEffect 처리](#10-worldeffect-처리)
+11. [스냅샷 및 직렬화](#11-스냅샷-및-직렬화)
+12. [검증 규칙](#12-검증-규칙)
 
-## 2.1 전체 데이터 스키마 (YAML Specification)
+---
+
+# 1. 목적
+
+World Engine은 캠페인이 진행되는 동안 세계의 상태를 일관되게 유지하고 자율적으로 진행시키는 엔진이다.
+
+이 엔진은 Creator Engine이 생성한 WorldSeed를 수신하여 세계의 초기 상태(WorldState)를 구성하고, 이후 플레이어의 행동 결과와 세계 자체의 내부 논리에 따라 상태를 지속적으로 갱신한다. 세계는 플레이어가 보고 있는 장면 밖에서도 멈추지 않는다. 세력은 목표를 향해 움직이고, 이벤트는 카운트다운을 소모하며, 자원은 변화한다.
+
+World Engine은 세계관에 중립적이다. 어떤 설정이든 동일한 구조로 처리한다.
+
+---
+
+# 2. 책임 범위
+
+## 2.1 World Engine이 하는 것
+
+| 항목 | 설명 |
+|------|------|
+| **WorldSeed 초기화** | Creator Engine의 WorldSeed를 수신하여 최초 WorldState를 구성한다. |
+| **WorldState 유지 및 제공** | 세션 전체에서 일관된 세계 상태 데이터를 관리하고 다른 엔진에 제공한다. |
+| **시간 경과 처리** | 플레이어 행동과 연동하여 세계 내 시각을 갱신한다. |
+| **지역 상태 갱신** | 위협도, 자원량, 인구 밀도, 지배 세력 등 지역의 동적 상태를 추적·갱신한다. |
+| **환경 시뮬레이션** | 날씨, 계절, 재해 등 전역 환경 변화를 처리한다. |
+| **세계 자율 진행** | 세션 시작 시 경과 시간 동안의 NPC·세력 행동 결과를 계산한다. |
+| **WorldEffect 수신 및 반영** | Director Engine 및 다른 엔진이 보내는 세계 변화 이벤트를 처리한다. |
+| **스냅샷 생성** | Save Engine과 Memory Engine이 상태를 보존할 수 있도록 직렬화된 스냅샷을 생성한다. |
+
+## 2.2 World Engine이 하지 않는 것
+
+| 금지 항목 | 이유 |
+|-----------|------|
+| **NPC 인스턴스 생성·관리** | NPC 데이터는 NPC Engine의 전담 영역이다. World Engine은 NPC의 위치(location_id)만 추적한다. |
+| **임무 생성·판정** | 임무 로직은 Mission Engine의 전담 영역이다. |
+| **플레이어에게 미발견 지역 정보 노출** | `discovered: false` 지역의 상태는 서술에 직접 포함되지 않는다. |
+| **판정 결과 결정** | 세력 충돌 계산의 판정은 가이드라인을 제공하되, 최종 결과는 판정 시스템을 따른다. |
+| **서술 생성** | 세계 상태 변화를 내러티브로 변환하는 것은 Director Engine의 역할이다. |
+
+---
+
+# 3. 아키텍처 및 인터페이스
+
+## 3.1 다른 엔진과의 관계
+
+```
+[Creator Engine]
+  world_seed ──────────────────────► [World Engine]
+                                            │
+              ┌─────────────────────────────┤
+              │  (세션 시작)                │
+              ▼                             │ world_state (읽기 전용 제공)
+  자율 진행 결과 보고                        ├──────────────► [Director Engine]
+  (autonomous_report)                       ├──────────────► [NPC Engine]
+              │                             ├──────────────► [Mission Engine]
+              ▼                             ├──────────────► [Shadow Engine]
+      [Director Engine]                     └──────────────► [QA Engine]
+              │
+              │ world_effects (이벤트)
+              ▼
+      [World Engine] ──world_snapshot──► [Save Engine]
+                     ──state_change_log──► [Memory Engine]
+```
+
+## 3.2 인터페이스 계약
+
+### 3.2.1 입력 (Inputs)
+
+| 변수명 | 타입 | 필수 | 시점 | 설명 |
+|--------|------|------|------|------|
+| `world_seed` | WorldSeed | Y | 캠페인 최초 시작 | Creator Engine이 생성한 초기 세계 구조. WorldState 초기화에 사용한다. |
+| `saved_world_state` | WorldState | Y | 세션 재개 시 | Save Engine이 복원한 이전 세션의 WorldState. |
+| `world_effects` | List[WorldEffect] | N | 매 턴 | Director Engine, NPC Engine, Mission Engine이 전달하는 세계 변화 이벤트. |
+| `time_advance_request` | TimeAdvanceRequest | N | 행동 처리 후 | Director Engine이 요청하는 시간 경과 처리. 소모 시간과 원인 행동을 포함한다. |
+| `active_module` | ModuleContext | Y | 세션 전체 | 활성화된 세계관 모듈. `world_rules.yaml`을 포함하면 그 규칙을 우선 적용한다. |
+
+### 3.2.2 출력 (Outputs)
+
+| 변수명 | 타입 | 시점 | 설명 |
+|--------|------|------|------|
+| `world_state` | WorldState | 요청 시 | 현재 세계 상태. 다른 엔진에 읽기 전용으로 제공된다. |
+| `autonomous_report` | AutonomousReport | 세션 시작 시 | 세션 간 경과 시간 동안 발생한 세계 자율 진행 결과 요약. Director Engine에 전달된다. |
+| `world_snapshot` | WorldStateSnapshot | 저장 트리거 시 | Save Engine에 전달하는 직렬화된 세계 상태. |
+| `state_change_log` | List[StateChange] | 세션 종료 시 | Memory Engine에 전달하는 이번 세션의 세계 변화 이력. |
+
+---
+
+# 4. 세계 상태 데이터 구조
+
+WorldState는 세계관에 독립적인 범용 구조다. 세계관 모듈이 정의하는 구체적 내용은 이 구조의 각 필드를 채우는 방식으로만 반영된다.
+
+## 4.1 WorldState 스키마
+
 ```yaml
 world_state:
   metadata:
-    version: "1.0.0"                   # 데이터 규격 버전
-    world_module: "string"             # 활성화된 세계관 모듈 식별자 (예: generic, scp 등)
-    last_updated_session: int          # 마지막으로 상태가 업데이트된 세션 번호
-  
+    version: "1.0.0"
+    world_module: string             # 활성화된 세계관 모듈 식별자
+    last_updated_session: int        # 마지막으로 갱신된 세션 번호
+    last_updated_at: int             # 마지막 갱신 시각 (epoch_seconds)
+
   timeline:
-    current_time:                      # 현재 게임 내 시각
-      epoch_seconds: int               # 누적 초 (시간 연산용 절대 기준값)
-      formatted: "string"              # 인간이 읽을 수 있는 형식 (예: "2026-06-26 15:00:00")
-      cycle: "string"                  # 낮/밤 주기 상태 (day | twilight | night)
-      season: "string"                 # 현재 계절 (spring | summer | autumn | winter)
-    time_scale: float                  # 실시간 대비 게임 시간 배율 (기본값: 1.0)
+    current_time:
+      epoch_seconds: int             # 누적 초 (시간 연산 절대 기준값)
+      formatted: string              # 세계관 포맷 시각 (예: "Year 412, Day 80, 09:00")
+      cycle: day | twilight | night
+      season: spring | summer | autumn | winter
+    time_scale: float                # 실시간 대비 게임 시간 배율 (기본값: 1.0)
 
   environment:
-    global_weather: "string"           # 전역 날씨 (clear | overcast | rainy | snowy | storm)
-    temperature_celsius: float         # 현재 전역/대표 기온
-    active_disasters:                  # 진행 중인 재해/특수 환경 상태
-      - id: "string"
-        name: "string"
-        severity: "string"             # minor | major | critical
-        remaining_duration: int        # 남은 시간 (초)
+    global_weather: clear | overcast | rainy | snowy | storm
+    temperature_celsius: float
+    active_disasters:
+      - id: string
+        name: string
+        severity: minor | major | critical
+        remaining_duration: int      # 남은 지속 시간 (초)
 
   locations:
-    - id: "string"                     # 지역 고유 식별자 (snake_case)
-      name: "string"                   # 지역 명칭
-      description: "string"            # 지역 묘사 기본 텍스트
-      connected_to: list["string"]     # 연결된 다른 지역 ID 목록
-      discovered: bool                 # 플레이어가 이 지역을 발견했는지 여부
+    - id: string                     # loc_{캠페인_약어}_{순번}
+      name: string
+      description: string
+      connected_to: list[string]     # 연결된 location ID 목록
+      discovered: bool               # 플레이어가 방문·인지했는지 여부
       status:
-        population_density: "string"   # 인구 밀도 (none | sparse | moderate | dense)
-        threat_level: int              # 위협도 (0: 안전 ~ 10: 치명적)
-        resource_abundance: int        # 자원량 (0: 황폐화 ~ 10: 풍족)
-        controlling_faction: "string"  # 이 지역을 지배하는 세력 ID (nullable)
-      active_events:                   # 이 지역에서 진행 중인 사건 목록
-        - id: "string"
-          name: "string"
-          countdown: int               # 이벤트 해결/폭발까지 남은 시간 (초)
-      current_occupants: list["string"] # 현재 이 지역에 있는 주요 개체(PC, NPC) ID 목록
+        population_density: none | sparse | moderate | dense
+        threat_level: int            # 0 (안전) ~ 10 (치명적)
+        resource_abundance: int      # 0 (황폐) ~ 10 (풍족)
+        controlling_faction: string | null  # 지배 세력 ID
+      active_events:
+        - id: string
+          name: string
+          countdown: int             # 이벤트 해결·폭발까지 남은 시간 (초)
+          is_permanent: bool
+      current_occupants: list[string]  # 현재 존재하는 주요 개체 ID (PC, NPC)
 
   factions:
-    - id: "string"                     # 세력 고유 식별자
-      name: "string"                   # 세력 명칭
-      disposition_to_player: int       # 플레이어 캐릭터에 대한 우호도 (-100 ~ +100)
-      influence: int                   # 세계 전체에 미치는 영향력 수치 (0 ~ 100)
+    - id: string                     # fac_{캠페인_약어}_{순번}
+      name: string
+      disposition_to_player: int     # -100 ~ +100
+      influence: int                 # 0 ~ 100
       resources:
-        wealth: int                    # 자금/재정 상태 (0 ~ 10)
-        manpower: int                  # 인력 규모 (0 ~ 10)
-        military_strength: int         # 군사/전투력 (0 ~ 10)
-      current_goal: "string"           # 세력의 최우선 현재 목표
-      relations:                       # 다른 세력과의 관계
-        faction_id_b: int              # 상대 세력에 대한 우호도 (-100 ~ +100)
+        wealth: int                  # 0 ~ 10
+        manpower: int                # 0 ~ 10
+        military_strength: int       # 0 ~ 10
+      current_goal: string           # 세력의 현재 최우선 목표
+      relations:
+        - faction_id: string
+          disposition: int           # -100 ~ +100
 
   global_events:
-    - id: "string"                     # 전역 이벤트 식별자
-      name: "string"                   # 이벤트 이름
-      trigger_condition: "string"      # 트리거 조건 설명
-      status: "string"                 # pending | active | resolved
-      countdown: int                   # 발생/완료까지 남은 세계 시간 (초, nullable)
+    - id: string                     # evt_{캠페인_약어}_{순번}
+      name: string
+      description: string
+      trigger_condition: string
+      status: pending | active | resolved
+      countdown: int | null          # 발생·완료까지 남은 세계 시간 (초), null이면 비정형
+      visibility: visible | hidden   # hidden이면 Shadow Engine 관할, 플레이어 비노출
 ```
 
 ---
 
-# 3. 시간 흐름 시스템 설계
+# 5. 세계 초기화 프로토콜
 
-World Engine은 게임 내 시간의 연속성을 유지하기 위해 플레이어 행동 및 세션 경과에 따른 시간의 소모를 정밀하게 추적한다.
+## 5.1 WorldSeed → WorldState 변환
 
-## 3.1 시간의 단위 (Time Units)
-시간은 다음과 같은 표준 단위를 사용하여 내부적으로 연산된다:
-- **라운드 (Round):** 전투 중 사용되는 기본 단위. 1라운드 = 6초.
-- **분 (Minute):** 탐색 및 이동의 기본 단위. 1분 = 10라운드 = 60초.
-- **시간 (Hour):** 심층 탐색, 대화, 단기 휴식의 기본 단위. 1시간 = 60분.
-- **일 (Day):** 이동, 장기 휴식, 세력 행동 갱신 등의 기본 단위. 1일 = 24시간.
+캠페인 최초 세션 시작 시 World Engine은 Creator Engine의 `world_seed`를 수신하여 최초 WorldState를 구성한다.
 
-## 3.2 플레이어 행동에 따른 시간 소모 규칙 (Time Cost Matrix)
-세계관 모듈에 별도의 설정이 없을 경우, World Engine은 아래의 기본 시간 소모 규칙을 준수한다.
+```
+[Creator Engine] ──world_seed──► [World Engine]
 
-| 플레이어 행동 분류 | 세부 행동 예시 | 기본 소모 시간 | 설명 |
-|-------------------|--------------|--------------|----|
-| **단기/즉각 행동** | 자물쇠 따기, 주변 관찰, 물건 줍기 | 1분 ~ 5분 | 비교적 즉각적인 신체 및 인지 활동 |
-| **장면 대화** | NPC와의 심도 깊은 교섭, 정보 수집 | 10분 ~ 30분 | 대화 주제가 무거울수록 소모가 증가 |
-| **정밀 조사** | 특정 방의 비밀문 찾기, 단서 분석 | 20분 ~ 1시간 | 물리적/정신적 집중을 요하는 작업 |
-| **지역 내 탐색** | 던전의 한 구역 탐험, 숲 수색 | 1시간 ~ 2시간 | 광범위하고 체계적인 수색 활동 |
-| **지역 간 이동** | 인접 도시로 걸어서 이동 | 거리 및 수단에 따름 | 도보: 시간당 약 4km, 마차: 8km, 기차: 40km |
-| **전투 수행** | 몬스터 또는 적대 단체와의 교전 | 라운드 수 × 6초 | 전투 후 정리 및 재정비 시간(+10분) 별도 추가 |
-| **단기 휴식** | 숨 고르기, 응급 처치, 장비 정비 | 1시간 | 피로 완화 및 일부 경미한 자원 회복 |
-| **장기 휴식** | 수면, 식사, 캠핑 | 8시간 | 피로 완전 회복, 정신력/자원 충전 |
-
-## 3.3 다운타임 및 비활성 상태의 시간 흐름 (Downtime & Offline Progression)
-플레이어가 모험을 일시적으로 중단하거나(Downtime), 세션 간 공백기가 존재할 때 World Engine은 다음 프로세스를 통해 세계 시간을 강제로 진행시킨다:
-1. **다운타임 선언:** 플레이어 또는 GM이 다운타임 기간(예: "한 달간 연구에 집중한다")을 설정한다.
-2. **시간 즉시 점프:** `epoch_seconds`를 해당 기간만큼 증가시킨다.
-3. **자율 이벤트 처리:** 점프한 시간 동안 축적된 NPC/세력의 행동 주기를 계산하고, 전역 이벤트의 카운트다운을 일괄 감산한다.
-4. **환경 요약 갱신:** 플레이어에게 다운타임 동안 발생한 큰 환경 변화(계절 변경, 주요 기후 재해 등)를 요약하여 제공할 수 있도록 기록한다.
-
----
-
-# 4. 지역/장소 상태 관리 프로토콜
-
-세계 지도는 노드(Locations)와 엣지(Connections)로 구성된 토폴로지 그래프로 관리된다. World Engine은 각 지역의 동적 상태 변화와 플레이어의 인지 한계를 추적한다.
-
-## 4.1 연결성 및 경로 연산 (Topology & Pathfinding)
-- **이동 가능 여부:** 두 지역 `A`와 `B` 사이에 `connected_to` 관계가 성립되어 있어야 플레이어는 직접 이동할 수 있다.
-- **경로 차단:** 지진, 붕괴, 세력의 봉쇄 등으로 인해 특정 연결(Edge)이 비활성화되면, World Engine은 경로 그래프에서 해당 엣지를 제거하고 대체 경로를 탐색해야 한다.
-
-## 4.2 지역 동적 상태 변화 규칙 (Local Dynamics)
-지역의 네 가지 핵심 변수는 매 시간/일 단위로 상호작용하며 갱신된다:
-1. **위협도 (Threat Level):** 
-   - 주변 적대 세력의 영향력이 강해지거나, 자원량이 0이 되면 위협도가 상승한다.
-   - 플레이어가 위협 요소를 제거하거나 지배 세력이 방비를 강화하면 위협도가 감소한다.
-   - 위협도가 8 이상인 지역에서는 야생 동물이나 조우할 수 있는 적의 위험도가 한 등급 상승한다.
-2. **자원량 (Resource Abundance):**
-   - 세력의 수확, 채굴, 재난 등으로 매일 감소한다.
-   - 자연 회복(계절에 따름) 또는 세력의 투자가 있을 경우 서서히 증가한다.
-3. **인구 밀도 (Population Density):**
-   - 위협도가 지속적으로 높으면 인구가 점차 유출된다(dense -> moderate -> sparse).
-   - 반대로 안전이 유지되고 자원이 풍부하면 인구가 유입된다.
-4. **지배 세력 (Controlling Faction):**
-   - 세력 간 영향력 전투의 결과로 변경될 수 있다.
-   - 지배 세력이 바뀔 경우 해당 지역의 치안 상태 및 플레이어에 대한 태도(NPC 우호도)는 지배 세력의 disposition 값을 추종한다.
-
-## 4.3 가시성 및 안개 처리 (Fog of War & Unknown Regions)
-- **미발견 지역 (`discovered: false`):** 플레이어가 방문하지 않은 지역의 상태는 플레이어 시트나 세션 요약에 절대로 구체적인 수치로 드러나지 않는다.
-- **자율 업데이트:** 플레이어가 보지 않는 상황에서도 미발견 지역의 사건(Countdown)은 백그라운드에서 동일하게 소모되며, 임계점에 다다르면 결과가 반영된다. (예: 플레이어가 방문하기 전에 이미 요새가 함락됨)
-
----
-
-# 5. 환경 이벤트 시스템
-
-날씨와 기후는 세계의 살아있는 느낌을 강조하고, 플레이어의 행동 방향성을 결정하는 주요 제약 사항이다.
-
-## 5.1 주기적 및 확률적 환경 변화 (Weather Generation)
-매일 오전 06:00시(게임 내 시각)에 World Engine은 다음 단계를 거쳐 당일의 날씨를 결정한다:
-1. **기본 확률 계산:** 현재 계절(Season)에 해당하는 기본 날씨 분포 확률 테이블을 참조한다.
-   - *봄/가을:* clear (60%) | overcast (25%) | rainy (15%)
-   - *여름:* clear (40%) | overcast (30%) | rainy (20%) | storm (10%)
-   - *겨울:* clear (30%) | overcast (35%) | snowy (25%) | storm (10%)
-2. **지속성 가중치 반영:** 어제의 날씨가 비/눈/폭풍이었을 경우, 다음 날에도 해당 날씨가 지속될 확률에 +20% 가중치를 더한다.
-3. **이상 기후 판정:** 100면체 주사위를 굴려 99-100이 나올 경우, `active_disasters`에 특수 환경 재해(가뭄, 한파, 태풍 등)를 추가한다.
-
-## 5.2 환경 변화가 플레이어 행동에 미치는 영향 (Environmental Penalties)
-
-| 날씨 상태 | 이동 속도 페널티 | 판정(스탯/스킬) 영향 | 시각/청각적 제약 |
-|----------|-----------------|---------------------|----------------|
-| **Clear** (맑음) | 없음 | 없음 | 최대 가시거리 확보 |
-| **Overcast** (흐림) | 없음 | 없음 | 가시거리 미세 감소, 그늘 제공 |
-| **Rainy** (비) | -20% (진흙탕 형성) | 불 다루기/추적 판정 난이도 +2 | 빗소리로 인해 청각 감지 판정 난이도 +1 |
-| **Snowy** (눈) | -40% (폭설 시) | 추위 저항(체력) 판정 매 시간 발생 | 시야 차단, 흔적이 눈에 덮임 |
-| **Storm** (폭풍/뇌우) | -60% (이동 위험) | 모든 원거리 공격 판정 난이도 +4 | 가시거리 5m 이내로 단축, 통신 두절 |
-
----
-
-# 6. 세계 변화 추적 시스템
-
-세계는 고정된 배경이 아니며, 플레이어의 직접적인 행동과 세력 간의 충돌에 따라 끊임없이 변화한다.
-
-## 6.1 플레이어 행동 결과의 세계 반영 (World Effects)
-- **직접적인 물리 영향:** 플레이어가 교량을 파괴하면 해당 연결 정보(`connected_to`)는 즉시 끊긴다.
-- **평판 및 세력 구도 변화:** 플레이어가 특정 퀘스트를 완수하거나 특정 진영의 요인을 처치하면, 연관된 세력의 `influence` 수치와 `disposition_to_player` 수치가 실시간 계산식에 의해 변동된다.
-  - *예시 식:* `disposition_to_player = disposition_to_player + (완료한 미션 중요도 * 10)`
-
-## 6.2 세력 및 NPC 자율 행동의 처리
-매 세션이 시작하거나 게임 내 시간이 1일 이상 경과했을 때, World Engine은 플레이어가 부재한 지역에서의 NPC/세력 간 대립 결과를 다음과 같이 계산한다:
-1. **목표 검증:** 각 세력의 `current_goal`을 확인한다.
-2. **영향력 주사위 대결:** 목표 지역의 방어측 영향력(Influence) + 자원량 vs 공격측 영향력 + 자원량으로 주사위 판정을 수행한다.
-3. **결과 업데이트:** 공격측이 승리할 경우 해당 지역의 `controlling_faction`이 갱신되며, 패배한 측의 자원량이 감소한다.
-
-## 6.3 단기 변화 vs 영구 변화 구분 규칙
-- **단기 변화 (Temporary Changes):** 폭우로 인한 도로 침수, 몬스터의 일시적 출몰 등. 이 변화는 `countdown` 속성을 가지며 시간이 지나면 자동으로 복구된다.
-- **영구 변화 (Permanent Changes):** 요새의 함락, 주요 NPC의 사망, 자원의 완전 고갈 등. 이 변화는 복구 타이머가 없으며, 다른 사건(재건 미션 등)이 발동하기 전까지 지속된다.
-
----
-
-# 7. 세계 상태 스냅샷 포맷 정의
-
-World Engine은 세션의 상태 보존 및 복원을 위해 현재의 전체 상태를 정밀하게 표현하되, 메모리/네트워크 효율성이 극대화된 경량 스냅샷 형식으로 저장할 수 있어야 한다.
-
-## 7.1 스냅샷 데이터 구조 (JSON Schema Reference)
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "WorldStateSnapshot",
-  "type": "object",
-  "required": ["snapshot_id", "timestamp", "engine_version", "timeline", "state_hash"],
-  "properties": {
-    "snapshot_id": {
-      "type": "string",
-      "description": "스냅샷 고유 UUID"
-    },
-    "timestamp": {
-      "type": "string",
-      "format": "date-time",
-      "description": "스냅샷 생성 시점의 실제 기록 시간"
-    },
-    "engine_version": {
-      "type": "string",
-      "description": "호환되는 World Engine 최소 버전"
-    },
-    "timeline": {
-      "type": "object",
-      "required": ["epoch_seconds", "session_count"],
-      "properties": {
-        "epoch_seconds": { "type": "integer" },
-        "session_count": { "type": "integer" }
-      }
-    },
-    "delta_log": {
-      "type": "array",
-      "description": "이전 세션 스냅샷 대비 변경된 데이터 사항 목록 (차분 저장용)",
-      "items": {
-        "type": "object",
-        "required": ["path", "op", "value"],
-        "properties": {
-          "path": { "type": "string" },
-          "op": { "type": "string", "enum": ["add", "replace", "remove"] },
-          "value": {}
-        }
-      }
-    },
-    "compressed_state": {
-      "type": "string",
-      "description": "압축된 전체 월드 상태 데이터 (Base64 인코딩)"
-    },
-    "state_hash": {
-      "type": "string",
-      "description": "데이터 위변조 방지 및 무결성 확인용 SHA-256 해시값"
-    }
-  }
-}
+1. world_seed.metadata → world_state.metadata 복사
+2. world_seed.timeline_anchor → world_state.timeline.current_time 초기화
+3. world_seed.locations → world_state.locations 초기화
+   └── 각 location의 status 기본값 적용:
+       threat_level: 0, resource_abundance: 5, population_density: moderate
+       (세계관 모듈 world_rules.yaml에 재정의가 있으면 그 값을 우선 적용)
+4. world_seed.factions → world_state.factions 초기화
+   └── initial_disposition_to_player, initial_influence 값 사용
+5. world_seed.global_event_seeds → world_state.global_events 초기화
+   └── status: pending, countdown: estimated_countdown_days * 86400 (초 환산)
+6. world_seed.conflict_seeds → 각 관련 faction의 relations 갱신
+7. 환경 초기화: 시작 계절의 날씨 테이블에서 첫 날씨 생성 (§8.1 프로토콜 적용)
+8. 초기화 완료 후 Director Engine에 autonomous_report: null 전달
+   (첫 세션은 자율 진행 없음)
 ```
 
-## 7.2 버전 호환성 및 마이그레이션 규칙
-- **하위 호환성:** 스냅샷의 `engine_version` 앞 두 자리(Major.Minor)가 현재 엔진 버전과 일치하는 경우 추가 변환 없이 로드를 허용한다.
-- **자동 마이그레이션:** 패치 변경(Patch level)인 경우 이전 버전 데이터를 자동으로 새 스키마 필드에 복사하고, 누락된 기본값을 채워 로드를 시도한다. 만약 실패할 경우 `ERR` 블록을 반환하며 세션 복원을 중단한다.
+## 5.2 세계 규칙 파일 바인딩
+
+활성화된 세계관 모듈의 `world_rules.yaml`이 존재하면 World Engine은 이를 로드하여 기본 물리 법칙 대신 적용한다.
+
+`world_rules.yaml`이 없는 경우 다음 기본 규칙을 적용한다.
+
+| 기본 규칙 | 내용 |
+|-----------|------|
+| **인과관계** | 모든 변화에는 원인이 있다. 원인 없는 상태 변화는 처리하지 않는다. |
+| **정보 이동 속도** | 정보는 전달 수단(사신, 신호, 문서)을 통해서만 이동한다. 즉각적 전달 수단이 없으면 이동 시간을 계산한다. |
+| **자원 희소성** | 모든 자원은 유한하다. 소비된 자원은 자연 회복 또는 생산 활동 없이 증가하지 않는다. |
 
 ---
 
-END
+# 6. 시간 흐름 시스템
+
+## 6.1 시간 단위
+
+모든 시간 연산은 `epoch_seconds`(누적 초)를 절대 기준으로 한다.
+
+| 단위 | 초 환산 | 주요 용도 |
+|------|---------|-----------|
+| 라운드 (Round) | 6초 | 전투 |
+| 분 (Minute) | 60초 | 단기 행동, 탐색 |
+| 시간 (Hour) | 3,600초 | 이동, 조사, 대화 |
+| 일 (Day) | 86,400초 | 장거리 이동, 세력 행동, 휴식 |
+
+## 6.2 행동별 시간 소모 기준표
+
+세계관 모듈의 `world_rules.yaml`에 재정의가 없으면 아래 기본값을 적용한다.
+
+| 행동 분류 | 예시 | 기본 소모 시간 |
+|-----------|------|----------------|
+| 즉각 행동 | 물건 줍기, 짧은 관찰 | 1분 ~ 5분 |
+| 장면 대화 | NPC 협상, 정보 수집 | 10분 ~ 30분 |
+| 정밀 조사 | 비밀문 탐색, 단서 분석 | 20분 ~ 1시간 |
+| 지역 내 탐색 | 던전 구역 탐험, 구역 수색 | 1시간 ~ 2시간 |
+| 지역 간 이동 | 인접 장소로 이동 | 거리 및 수단에 따름 |
+| 전투 | 교전 | 라운드 수 × 6초 + 정리 10분 |
+| 단기 휴식 | 응급 처치, 숨 고르기 | 1시간 |
+| 장기 휴식 | 수면, 캠핑 | 8시간 |
+
+**이동 속도 기준 (도보 기준, 세계관 모듈 재정의 가능):**
+
+| 이동 수단 | 시간당 거리 |
+|-----------|------------|
+| 도보 | 4km |
+| 마차·승마 | 8km |
+| 쾌속 수단 (기차, 비행정 등) | 세계관 모듈 정의 |
+
+## 6.3 다운타임 처리
+
+플레이어가 모험을 중단하거나 세션 간 공백이 발생할 때 처리한다.
+
+```
+1. 다운타임 기간 선언 (플레이어 또는 GM)
+   예: "한 달간 연구에 집중한다"
+2. epoch_seconds += 선언된 기간 (초 환산)
+3. 경과 시간 동안 누적된 자율 진행 계산 (§9 프로토콜 전면 적용)
+4. 계절 변경, 날씨 변화, 재해 여부 처리
+5. Director Engine에 autonomous_report 전달 (다운타임 요약 포함)
+```
+
+---
+
+# 7. 지역 상태 관리
+
+## 7.1 지역 그래프 구조
+
+세계 지도는 **노드(Location)** 와 **엣지(Connection)** 로 구성된 토폴로지 그래프다.
+
+- 두 지역 A와 B 사이에 `connected_to` 관계가 있어야 직접 이동이 가능하다.
+- 연결이 차단되면(전투, 재해, 세력 봉쇄 등) World Engine은 해당 엣지를 비활성화하고 대체 경로를 탐색한다.
+- 연결이 없는 경로로의 이동 요청이 오면 World Engine은 이동 불가 사유를 Director Engine에 반환한다.
+
+## 7.2 지역 동적 상태 갱신 규칙
+
+지역의 네 가지 핵심 변수는 세계 진행 중 다음 규칙에 따라 갱신된다.
+
+### 위협도 (threat_level)
+
+| 조건 | 변화 |
+|------|------|
+| 인접 적대 세력의 영향력이 증가하거나 지역 자원량이 0에 도달 | +1 ~ +2 (일 단위) |
+| 플레이어가 위협 요소 제거 | -1 ~ -3 (즉시) |
+| 지배 세력이 방어력을 강화하는 WorldEffect 수신 | -1 (즉시) |
+| threat_level ≥ 8 | 이 지역의 조우 위험도 한 등급 상승 |
+
+### 자원량 (resource_abundance)
+
+| 조건 | 변화 |
+|------|------|
+| 세력의 수확·채굴 활동 (일 단위) | -1 |
+| 자연 회복 (계절 기반, 봄·여름 활성) | +0.5 ~ +1 (일 단위) |
+| 세력의 자원 투자 WorldEffect | +지정량 (즉시) |
+| 재해 발생 | -2 ~ -5 (즉시) |
+
+### 인구 밀도 (population_density)
+
+| 조건 | 변화 |
+|------|------|
+| threat_level ≥ 7 이 3일 이상 지속 | dense → moderate → sparse (단계적) |
+| threat_level ≤ 3 이 7일 이상 지속 + resource_abundance ≥ 6 | sparse → moderate → dense (단계적) |
+
+### 지배 세력 (controlling_faction)
+
+세력 간 영향력 충돌 결과로 변경된다. (§9.2 참조)
+변경 시 해당 지역의 NPC 우호도 기본값은 신 지배 세력의 `disposition_to_player`로 보정된다.
+
+## 7.3 안개 처리 (Fog of War)
+
+`discovered: false`인 지역에 대해 World Engine은 다음 규칙을 적용한다.
+
+- 해당 지역의 상태(threat_level, controlling_faction 등)는 플레이어에게 수치로 노출하지 않는다.
+- 플레이어가 미발견 지역에 대한 정보를 요청하면 Director Engine은 현재 캐릭터가 알 수 있는 범위 내의 간접 정보만 제공한다.
+- World Engine은 미발견 지역도 동일하게 자율 진행을 처리한다. 플레이어가 방문하기 전에 이미 요새가 함락되거나 자원이 고갈될 수 있다.
+- 플레이어가 처음 방문하거나 신뢰할 수 있는 정보를 입수하면 `discovered: true`로 전환된다.
+
+---
+
+# 8. 환경 시스템
+
+## 8.1 날씨 생성 프로토콜
+
+매일 오전 06:00 (게임 내 시각)에 World Engine은 다음 단계로 날씨를 결정한다.
+
+**1단계: 계절별 기본 확률 참조**
+
+| 계절 | clear | overcast | rainy | snowy | storm |
+|------|-------|----------|-------|-------|-------|
+| 봄 (spring) | 60% | 25% | 15% | 0% | 0% |
+| 여름 (summer) | 40% | 30% | 20% | 0% | 10% |
+| 가을 (autumn) | 55% | 25% | 15% | 0% | 5% |
+| 겨울 (winter) | 30% | 35% | 0% | 25% | 10% |
+
+**2단계: 지속성 가중치 반영**
+
+전날 날씨가 rainy, snowy, storm이면 같은 날씨 발생 확률에 +20%를 더한다.
+
+**3단계: 이상 기후 판정**
+
+100면체 판정에서 99~100이 나오면 `active_disasters`에 특수 재해를 추가한다.
+
+세계관 모듈의 `world_rules.yaml`에 날씨 테이블이 정의되어 있으면 그 테이블을 우선한다.
+
+## 8.2 환경 페널티
+
+Director Engine은 World Engine의 `global_weather` 값을 기반으로 서술에 다음 페널티를 적용한다.
+
+| 날씨 | 이동 속도 | 판정 영향 | 감각 제약 |
+|------|-----------|-----------|-----------|
+| clear | 없음 | 없음 | 없음 |
+| overcast | 없음 | 없음 | 가시거리 미세 감소 |
+| rainy | -20% | 불 다루기·추적 DC +2 | 청각 감지 DC +1 |
+| snowy | -40% | 체력 저항 매 시간 판정 | 시야 차단, 흔적 매몰 |
+| storm | -60% | 원거리 공격 DC +4 | 가시거리 5m 이내, 통신 두절 |
+
+## 8.3 재해 처리
+
+`active_disasters`에 등록된 재해는 `remaining_duration`이 0이 될 때까지 지속된다. 재해 기간 동안:
+
+- 해당하는 지역의 `threat_level` +2 보정이 자동 적용된다.
+- `resource_abundance` 매일 -1 소모가 추가 적용된다.
+- Director Engine이 서술에 재해 상황을 반영한다.
+
+---
+
+# 9. 세계 자율 진행
+
+World Engine은 세션 시작 시 또는 게임 내 시간이 1일 이상 경과했을 때 자율 진행을 처리한다. 이 처리는 플레이어가 보지 않는 동안에도 세계가 살아 움직인다는 원칙(CoreSpec §13.3.1)을 구현한다.
+
+## 9.1 세션 시작 자율 진행 프로토콜
+
+```
+1. 이전 세션 종료 시각과 현재 세션 시작 시각의 차이(elapsed_seconds) 계산
+2. 경과 일수만큼 날씨 생성 프로토콜 반복 실행 (최종 날씨만 WorldState에 반영)
+3. 경과 일수만큼 지역 상태 갱신 반복 실행 (§7.2 규칙 적용)
+4. 세력 자율 행동 계산 (§9.2 프로토콜 적용)
+5. 전역 이벤트 카운트다운 처리 (§9.3 프로토콜 적용)
+6. 변경된 항목 목록 집계 → autonomous_report 생성
+7. Director Engine에 autonomous_report 전달
+```
+
+`autonomous_report`의 내용은 세계에서 발생한 사실만을 포함한다. 플레이어에게 이 내용을 어떻게 서술할지는 Director Engine이 결정한다.
+
+## 9.2 세력 자율 행동 계산
+
+매 경과 일수마다 각 세력에 대해 다음 순서로 처리한다.
+
+```
+1. 세력의 current_goal 확인
+   └── 목표가 특정 지역 장악이면 해당 지역과 현재 지배 세력을 식별
+
+2. 행동 가능 여부 확인
+   └── resources.manpower < 2 이면 행동 불가 (이번 일차 처리 건너뜀)
+
+3. 영향력 대결 (목표 지역에 경쟁 세력이 있을 경우)
+   공격측 판정값 = influence + resources.military_strength + 1d10
+   방어측 판정값 = influence + resources.military_strength + 1d10
+   (동점은 방어측 우세 — CoreSpec §8.6 준용)
+
+4. 결과 처리
+   공격측 승리: 해당 지역 controlling_faction → 공격측 ID로 갱신
+               방어측 resources.manpower -1, influence -2
+   방어측 승리: 공격측 resources.manpower -1
+               공격측 influence -1
+
+5. 결과를 state_change_log에 기록
+```
+
+단, 플레이어가 해당 지역에 현재 존재하는 경우 세력 충돌은 Director Engine에 active event로 전달하고 World Engine이 직접 결과를 적용하지 않는다.
+
+## 9.3 전역 이벤트 카운트다운
+
+`global_events`의 `status: pending` 이벤트 중 `countdown`이 있는 항목은 매일 `countdown -= 86400`을 적용한다.
+
+```
+countdown ≤ 0이 되면:
+  status: pending → active 로 전환
+  해당 이벤트의 trigger_condition에 정의된 WorldEffect를 자동 발생시킨다
+  visibility: visible이면 → Director Engine에 이벤트 발생 알림
+  visibility: hidden이면  → Shadow Engine에만 전달, Director Engine에 비노출
+```
+
+`status: active` 이벤트는 WorldEffect가 반영된 상태이며, 플레이어의 개입 또는 별도 해결 조건을 통해서만 `resolved`로 전환된다.
+
+---
+
+# 10. WorldEffect 처리
+
+## 10.1 WorldEffect 스키마
+
+WorldEffect는 다른 엔진이 World Engine에 전달하는 세계 변화 요청이다.
+
+```yaml
+world_effect:
+  id: string                         # eff_{캠페인_약어}_{순번}
+  source_action_id: string           # 이 효과를 유발한 행동 ID
+  source_engine: Director | NPC | Mission | Shadow
+  effect_type: location | faction | event | connection | entity_position
+  target_id: string                  # 변경 대상 ID (location, faction, event ID 등)
+  operation: add | update | remove
+  changes:
+    - field: string                  # 변경할 필드 경로 (예: "status.threat_level")
+      delta: int | null              # 수치 변화량 (+/-). 수치 필드에만 사용.
+      new_value: any | null          # 절대값 설정. delta가 null일 때 사용.
+  is_permanent: bool                 # false면 countdown 이후 자동 복구
+  countdown: int | null              # is_permanent: false일 때 복구까지 남은 시간 (초)
+```
+
+## 10.2 단기 변화 vs 영구 변화
+
+| 구분 | is_permanent | 예시 | 처리 |
+|------|-------------|------|------|
+| **단기 변화** | false | 폭우로 인한 도로 침수, 몬스터 일시 출몰 | countdown 감소 후 자동 복구 |
+| **영구 변화** | true | 교량 파괴, 주요 NPC 사망, 요새 함락 | 별도 복구 이벤트 없으면 지속 |
+
+영구 변화가 발생하면 Save Engine에 즉시 체크포인트 저장을 요청한다.
+
+## 10.3 WorldEffect 적용 순서
+
+같은 턴에 복수의 WorldEffect가 수신된 경우 다음 순서로 적용한다.
+
+```
+1. entity_position (개체 위치 변경) — 먼저 적용하여 이후 효과의 대상을 정확히 함
+2. event (이벤트 상태 변경)
+3. connection (지역 연결 변경)
+4. location (지역 상태 변경)
+5. faction (세력 상태 변경)
+```
+
+동일 대상에 동일 필드를 변경하는 복수 효과가 충돌하면 `source_engine` 우선순위에 따른다.
+우선순위: Director > NPC > Mission > Shadow
+
+---
+
+# 11. 스냅샷 및 직렬화
+
+## 11.1 WorldStateSnapshot 스키마
+
+```yaml
+world_state_snapshot:
+  snapshot_id: string                # UUID
+  created_at_real: string            # ISO 8601 실제 세계 시각
+  created_at_world: int              # 스냅샷 생성 시점의 epoch_seconds
+  world_module: string
+  engine_version: string
+  session_count: int
+  trigger_type: session_start | session_end | world_change | manual
+  state_hash: string                 # WorldState 전체의 SHA-256 해시 (무결성 검증용)
+  full_state: WorldState             # 이 시점의 전체 WorldState
+  delta_from_previous:               # 이전 스냅샷 대비 변경 항목 목록 (차분 저장용)
+    - path: string                   # 변경된 필드 경로
+      op: add | replace | remove
+      value: any
+```
+
+## 11.2 버전 호환성 규칙
+
+| 조건 | 처리 |
+|------|------|
+| Major.Minor 일치 | 추가 변환 없이 로드 허용 |
+| Patch만 다름 | 누락 필드에 기본값 채워 자동 마이그레이션 |
+| Minor 버전 하위 호환 | 변환 스크립트 적용 후 로드 시도 |
+| Major 버전 불일치 | 로드 차단. GM에게 오류 보고 |
+
+---
+
+# 12. 검증 규칙
+
+QA Engine은 World Engine의 상태와 처리에 대해 다음 항목을 검증한다.
+
+| 규칙 ID | 검증 항목 | 위반 시 처리 |
+|---------|-----------|-------------|
+| `SV-WLD-001` | WorldState의 모든 location `connected_to` 참조가 실제 존재하는 location ID를 가리키는가 | Error — 참조 오류 목록 반환, Director Engine에 해당 연결 사용 금지 알림 |
+| `SV-WLD-002` | WorldState의 모든 `controlling_faction` 값이 실제 존재하는 faction ID인가 | Error — 해당 location의 controlling_faction을 null로 초기화 |
+| `SV-WLD-003` | 동일 location에 `discovered: true`이지만 `current_occupants`에 등록된 개체 ID가 존재하지 않는 경우 | Warning — 로그에 기록, 계속 진행 |
+| `SV-WLD-004` | WorldEffect 처리 후 수치 필드(threat_level, resource_abundance 등)가 허용 범위를 벗어났는가 | Error — 경계값으로 클램프 후 GM에 고지 |
+| `SV-WLD-005` | 자율 진행 결과 `status: resolved`인 이벤트가 WorldState에서 제거되지 않고 남아 있는가 | Warning — 해당 이벤트 archive 처리 권고 |
+| `SV-WLD-006` | `discovered: false` 지역의 정보가 Director Engine에 직접 노출된 흔적이 있는가 | Fatal — 즉시 차단, 해당 서술 플래그 |
+| `SV-WLD-007` | 플레이어가 존재하는 지역에서 세력 충돌이 World Engine에 의해 자동 확정되었는가 | Fatal — 즉시 차단, Director Engine에 active event로 재전달 |
+| `SV-WLD-008` | 영구 변화(is_permanent: true) 발생 후 Save Engine 체크포인트 요청이 이루어졌는가 | Warning — 즉시 체크포인트 요청 |
+| `SV-WLD-009` | WorldStateSnapshot의 state_hash가 full_state 재계산값과 일치하는가 | Fatal — 스냅샷 무효화, 이전 스냅샷으로 롤백 요청 |
+
+---
+
+**END OF WorldEngine v1.0.0**

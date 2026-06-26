@@ -68,3 +68,13 @@ Update this table when adding a new issue file.
 | Number | Title | Type | Status |
 |--------|-------|------|--------|
 | 0001 | CoreSpec | — | Open |
+| 0002 | Creator Engine 명세 작성 | New Spec | Resolved |
+| 0003 | Director Engine 명세 작성 | New Spec | Resolved |
+| 0004 | World Engine 명세 작성 | New Spec | Resolved |
+| 0005 | NPC Engine 명세 작성 | New Spec | Resolved |
+| 0006 | Mission Engine 명세 작성 | New Spec | Resolved |
+| 0007 | Shadow Engine 명세 작성 | New Spec | Resolved |
+| 0300 | SCP 모듈 기본 구조 작성 (SCP-0001) | New Module | Resolved |
+| 0301 | SCP TRPG 2기 캠페인 준비 문서 (SCP-0002) | Campaign Content | Resolved |
+| 0302 | SCP TRPG Director 시스템 프롬프트 작성 (SCP-0003) | Prompt | Resolved |
+| 0303 | SCP TRPG Shadow Director 시스템 프롬프트 작성 (SCP-0004) | Prompt | Resolved |

@@ -1,66 +1,149 @@
 # NPC Engine Specification
 
-## Status
-Draft v0.1
+**문서 식별자:** `engines/NPC/NPCEngine.md`
+**버전:** v1.0.0
+**상태:** Draft
+**최종 수정:** 2026-06-26
+**참조:** `core/CoreSpec.md` §5.6, §11.4, §12.2.4, §13.2
 
 ---
 
-# 1. Purpose
+## 목차
 
-이 문서는 AI Narrative Engine의 **NPC Engine**에 대한 상세 설계 및 규격을 정의한다.
-NPC Engine은 게임 내 모든 비플레이어 캐릭터(Non-Player Character)의 생성, 성격, 행동 결정, 대화 생성, 관계 변화 및 비밀 관리 등을 담당하는 핵심 엔진이다.
-
-이 명세는 세계관 독립적으로 설계되었으며, 모듈 레이어에서 주입되는 세계관 설정에 따라 구동된다.
-
----
-
-# 2. Architecture & Interface
-
-NPC Engine은 플레이어 행동 분석 결과와 월드 상태를 입력받아 NPC의 인지, 심리 상태 갱신, 대화 및 행동 반응을 생성한다.
-
-## 2.1 인터페이스 계약
-
-### 2.1.1 입력 (Inputs)
-NPC Engine은 실행 시 다음과 같은 데이터 객체를 전달받는다.
-
-| 입력 변수명 | 타입 | 필수 여부 | 설명 |
-|---|---|---|---|
-| `resolved_action` | Action Object | Y | Compiler Engine에서 검증 및 해석이 완료된 플레이어의 행동 |
-| `world_state` | WorldState | Y | 시간 흐름 및 환경 변화가 반영된 현재 세계 상태 |
-| `npc_state` | NPCState | Y | 해당 씬에 참여 중이거나 전역 관리 중인 NPC의 이전 상태 |
-| `active_module` | ModuleContext | Y | 현재 활성화된 세계관 모듈 규칙 (아키타입, 어조 가이드 등) |
-
-### 2.1.2 출력 (Outputs)
-NPC Engine은 처리를 마친 후 다음 데이터를 생성하여 Director Engine 및 Save Engine에 전달한다.
-
-| 출력 변수명 | 타입 | 설명 |
-|---|---|---|
-| `npc_response` | Object | NPC의 외적 반응 (대사 블록, 신체적 행동 묘사) |
-| `updated_npc_state` | NPCState | 감정 변화, 기억 추가, 관계(호감도) 변화가 반영된 NPC 상태 객체 |
-| `npc_events` | List[Event] | NPC의 행동으로 인해 세계 상태에 미치는 영향 (예: NPC의 공격, 장소 이동 등) |
+1. [목적](#1-목적)
+2. [책임 범위](#2-책임-범위)
+3. [아키텍처 및 인터페이스](#3-아키텍처-및-인터페이스)
+4. [NPC 데이터 구조](#4-npc-데이터-구조)
+5. [NPC 생성 프로토콜](#5-npc-생성-프로토콜)
+6. [의사결정 시스템](#6-의사결정-시스템)
+7. [대화 생성 프로토콜](#7-대화-생성-프로토콜)
+8. [관계망 및 호감도 시스템](#8-관계망-및-호감도-시스템)
+9. [지식 및 비밀 관리](#9-지식-및-비밀-관리)
+10. [NPC 상태 추적](#10-npc-상태-추적)
+11. [자율 행동 프로토콜](#11-자율-행동-프로토콜)
+12. [검증 규칙](#12-검증-규칙)
 
 ---
 
-# 3. NPC Core Data Structure
+# 1. 목적
 
-NPC의 모든 상태는 YAML 형식으로 구조화하여 관리한다. 캐릭터의 중요도(`role`)에 따라 데이터 구조의 상세도를 차등 적용한다.
+NPC Engine은 캠페인에 등장하는 모든 비플레이어 캐릭터(Non-Player Character)의 생성, 행동 결정, 대화 생성, 관계 변화, 상태 추적을 담당하는 엔진이다.
 
-## 3.1 NPC State Schema
+NPC는 플레이어를 위한 도구가 아니다. 각 NPC는 자신의 목표와 이익을 추구하며, 그것이 플레이어와 충돌할 수 있다. NPC Engine은 이 자율성을 일관되게 구현하여 세계에 설득력을 부여한다.
+
+---
+
+# 2. 책임 범위
+
+## 2.1 NPC Engine이 하는 것
+
+| 항목 | 설명 |
+|------|------|
+| **NPC 인스턴스 생성** | 세계관 모듈 템플릿과 Director Engine 요청을 기반으로 NPC를 생성한다. |
+| **반응 생성** | 플레이어 행동에 대한 NPC의 대사, 신체 행동, 감정 반응을 결정한다. |
+| **의사결정** | 성격 특성, 목표, 이익을 기반으로 NPC의 행동 방침을 결정한다. |
+| **호감도 관리** | 플레이어와의 상호작용 결과에 따라 호감도 수치를 갱신한다. |
+| **지식 접근 제어** | NPC가 보유한 정보의 공개 여부를 등급별로 엄격히 제어한다. |
+| **상태 추적** | 생명, 건강, 감정 상태를 실시간으로 갱신하고 보존한다. |
+| **자율 행동 처리** | 시간 경과 시 각 NPC의 목표에 따른 자율 행동 결과를 계산한다. |
+| **WorldEffect 발행** | NPC 이동, 사망, 세력 기여 등 세계 변화를 World Engine에 전달한다. |
+
+## 2.2 NPC Engine이 하지 않는 것
+
+| 금지 항목 | 이유 |
+|-----------|------|
+| **플레이어 캐릭터 행동·대사 작성** | 플레이어 자율성 최우선 원칙(CoreSpec §3.1) 위반이다. |
+| **메타 정보 노출** | NPC가 알 수 없는 수치, 숨겨진 사실, 타 장소 사건을 대사에 포함하지 않는다. |
+| **드라마를 위한 캐릭터 배신** | NPC의 목표·성격과 모순된 행동을 서사적 효과를 위해 강제하지 않는다. |
+| **임무 완료·실패 확정** | 임무 상태 판정은 Mission Engine에 위임한다. |
+| **세계 상태 직접 수정** | WorldEffect 이벤트를 발행할 뿐이며 WorldState를 직접 변경하지 않는다. |
+| **서술 텍스트 생성** | NPC 반응을 최종 내러티브로 변환하는 것은 Director Engine의 역할이다. |
+
+---
+
+# 3. 아키텍처 및 인터페이스
+
+## 3.1 다른 엔진과의 관계
+
+```
+[세계관 모듈 content/npcs.yaml]
+          │ 사전 정의 NPC 초기화
+          ▼
+   [NPC Engine] ◄──── NPCEngineQuery ◄──── [Director Engine]
+          │                                       ▲
+          │  npc_response                         │ npc_response
+          │  updated_npc_state                    │ (통합 후 서술)
+          │  npc_world_effects ──────────────► [World Engine]
+          │                                  (WorldEffect 발행)
+          │  mission_events ─────────────────► [Mission Engine]
+          │                                  (NPC 사망·완료 알림)
+          │  updated_npc_states ─────────────► [Save Engine]
+          │
+          ▼
+   [Memory Engine] ←── 세션 종료 시 상호작용 기록 전달
+```
+
+## 3.2 인터페이스 계약
+
+### 3.2.1 입력 (Inputs)
+
+| 변수명 | 타입 | 필수 | 설명 |
+|--------|------|------|------|
+| `npc_engine_query` | NPCEngineQuery | Y | Director Engine이 보내는 처리 요청. 타입에 따라 반응·대화·자율 행동·생성을 처리한다. |
+| `npc_states` | List[NPCState] | Y | 현재 세션에서 관리 중인 모든 NPC의 상태. Save Engine에서 복원되거나 이번 세션에 생성된 상태다. |
+| `world_state` | WorldState | Y | World Engine이 관리하는 현재 세계 상태. NPC의 위치·세력 상태 확인에 사용한다. |
+| `time_advance_notification` | TimeAdvanceNotification \| null | N | World Engine이 시간 경과를 알릴 때 전달. 자율 행동 계산을 트리거한다. |
+| `active_module` | ModuleContext | Y | 활성화된 세계관 모듈. 아키타입 정의, 어조 가이드, NPC 템플릿을 포함한다. |
+
+### 3.2.2 NPCEngineQuery 스키마
+
+```yaml
+npc_engine_query:
+  type: reaction | dialogue | create | autonomous_action
+  npc_id: string | null          # create 타입이면 null (신규 생성)
+  trigger_action: ResolvedAction | null   # 반응의 원인 행동. 자율 행동이면 null
+  world_state: WorldState
+  scene_context: SceneState | null        # 장면 문맥. 자율 행동이면 null
+  creation_params:               # type: create일 때만 사용
+    role: major | minor | background
+    archetype: string            # 세계관 모듈이 정의한 아키타입 ID
+    location_id: string
+    faction_id: string | null
+    context_hint: string         # 이 NPC가 등장하는 상황 설명
+```
+
+### 3.2.3 출력 (Outputs)
+
+| 변수명 | 타입 | 조건 | 설명 |
+|--------|------|------|------|
+| `npc_response` | NPCResponse | reaction·dialogue 타입 | NPC 대사 블록, 신체 행동 묘사, 감정 플래그. |
+| `updated_npc_state` | NPCState | 모든 타입 | 호감도·감정·기억·생명 상태 등이 반영된 갱신된 NPC 상태. |
+| `npc_world_effects` | List[WorldEffect] | 세계 변화 발생 시 | World Engine에 전달할 NPC 행동 유발 변화 목록. |
+| `mission_events` | List[MissionEvent] | NPC 사망·임무 연관 행동 시 | Mission Engine에 전달할 이벤트. |
+| `new_npc_state` | NPCState | create 타입 | 새로 생성된 NPC의 초기 상태. |
+
+---
+
+# 4. NPC 데이터 구조
+
+## 4.1 NPCState 스키마
 
 ```yaml
 npc:
   # 1. 기본 식별 정보
-  id: string                   # 고유 식별자 (예: npc_guard_01, npc_merchant_mary)
-  name: string                 # 플레이어에게 노출되는 이름
-  role: major | minor | background # NPC 중요 등급
-  archetype: string            # 세계관 모듈이 정의한 직업/역할 유형
-  
+  id: string                         # npc_{캠페인_약어}_{순번}
+  name: string                       # 플레이어에게 노출되는 이름
+  role: major | minor | background
+  archetype: string                  # 세계관 모듈 정의 직업·역할 유형
+  faction_id: string | null          # 소속 세력 ID (없으면 null)
+  created_session: int               # 최초 생성 세션 번호
+
   # 2. 성격 및 행동 특성
-  behavioral_traits:           # 성격적 특성 목록
-    - trait_id: string         # 특성 식별자 (예: suspicious, greedy)
-      intensity: int           # 강도 (1 ~ 5)
-  moral_alignment: string      # 도덕적 성향 (예: lawful_evil, chaotic_good 등)
-  
+  behavioral_traits:
+    - trait_id: string               # 예: suspicious, greedy, cowardly, loyal
+      intensity: int                 # 1 (매우 약함) ~ 5 (극도로 강함)
+  moral_alignment: string            # 세계관 모듈이 정의한 도덕 성향
+
   # 3. 동기 및 목표
   goals:
     primary:
@@ -71,202 +154,382 @@ npc:
       - id: string
         description: string
         status: active | completed | failed
-        
-  # 4. 관계망 (Relationship Network)
+
+  # 4. 관계망
   disposition:
-    toward_player: int         # 플레이어에 대한 호감도 (-100 ~ +100, 기본값 0)
-    toward_factions:           # 세력별 호감도
-      faction_id: int          # key: 세력 ID, value: 호감도 (-100 ~ +100)
-    toward_npcs:               # 타 NPC와의 개별 관계
-      npc_id: string           # key: 타 NPC ID, value: 관계 유형 및 수치
-      
-  # 5. 지식 및 비밀 정보 (Knowledge Base)
+    toward_player: int               # -100 ~ +100, 초기값: 세력 기반 기본값
+    trust_permanent_debuff: bool     # 거짓말 적발로 인한 영구 신뢰 제한 여부
+    toward_factions:
+      - faction_id: string
+        value: int                   # -100 ~ +100
+    toward_npcs:
+      - npc_id: string
+        value: int                   # -100 ~ +100
+        relationship_type: string    # 예: ally, rival, subordinate, mentor
+
+  # 5. 지식 및 비밀
   knowledge:
-    public:                    # 질문 시 즉각 공유하는 대중적 정보
+    public:
       - fact_id: string
         content: string
-    private:                   # 호감도 조건 충족 시 공유하는 비밀 정보
+    private:
       - fact_id: string
         content: string
-        required_disposition: int # 요구 호감도 수치 (기본값 40)
-    secret:                    # 강압, 특수 상황에서만 추출 가능한 일급 비밀
+        required_disposition: int    # 공개 최소 호감도 (기본값: 40)
+    secret:
       - fact_id: string
         content: string
-        unlock_condition: string # 획득 조건 설명
-        
+        unlock_condition: string
+
   # 6. 현재 동적 상태
   current_state:
-    life_status: alive | dead | unconscious
+    life_status: alive | unconscious | dead
     health_status: healthy | injured | critical
-    emotional_state: string    # 현재 감정 상태 (예: calm, angry, terrified)
-    location_id: string        # 현재 위치 식별자
-    
-  # 7. 단기 상호작용 기억 (Session Memory)
-  recent_interactions:       # 최근 플레이어와의 상호작용 요약 (최대 5개 보존)
+    emotional_state: string          # 예: calm, suspicious, angry, terrified, grieving
+    location_id: string
+
+  # 7. 단기 상호작용 기억
+  recent_interactions:               # 최대 5개 보존 (major는 세션 무제한)
     - session_id: int
       timestamp: string
-      interaction_type: speech | trade | combat | favor | betrayal
+      interaction_type: speech | trade | combat | favor | betrayal | witness
       summary: string
-      lie_detected: boolean    # 플레이어가 거짓말을 하고 NPC가 눈치챘는지 여부
+      lie_detected: bool
 ```
 
-## 3.2 NPC 역할 등급 분류 및 차등 처리 (ENG-0054)
+## 4.2 NPC 역할 등급 분류
 
-NPC는 중요도에 따라 세 등급으로 분류하며, AI 컨텍스트 최적화와 기억 관리를 차별화한다.
-
-| 분류 | 정의 | 상태 구조 상세도 | 기억 지속성 (Memory) | 비고 |
-|---|---|---|---|---|
-| **Major (주요 NPC)** | 스토리 중심 인물, 퀘스트 제공자, 주요 적대자 | 완전한 스키마 준수 (100% 정보 보존) | 장기 캠페인 전체 영구 유지 | 세션을 넘나드는 정밀한 대화와 음모 구성 |
-| **Minor (주요 조연)** | 마을 상인, 단기 정보원, 경비 대장 등 | 생략형 스키마 (지식 최소화, 관계는 플레이어 중심만) | 최근 5세션 동안만 메모리 유지 후 요약 압축 | 필요시 Major 등급으로 승격 가능 |
-| **Background (단역/배경)** | 길거리 행인, 일반 몬스터, 군중 | 최소 스키마 (ID, 이름, 현재 상태만 유지) | 세션 종료 시 소멸 (휘발성) | 템플릿 기반으로 동적 생성 및 소거 |
+| 등급 | 정의 | 스키마 상세도 | 기억 보존 | 특이사항 |
+|------|------|--------------|-----------|----------|
+| **Major** | 스토리 핵심 인물, 퀘스트 제공자, 주요 적대자 | 전체 스키마 | 캠페인 전 기간 영구 보존 | Memory Engine Tier 1 대상 후보 |
+| **Minor** | 상인, 단기 정보원, 경비 대장 등 | 간략 스키마 (지식 최소화, 관계는 플레이어 중심만) | 최근 5세션 후 요약 압축 | 조건 충족 시 Major로 승격 가능 |
+| **Background** | 행인, 군중, 일반 적 | 최소 스키마 (id, name, life_status, location_id만) | 세션 종료 시 소멸 | 세계관 모듈 템플릿으로 즉시 생성 |
 
 ---
 
-# 4. Personality & Decision-Making System (ENG-0050)
+# 5. NPC 생성 프로토콜
 
-NPC는 정해진 성격 특성(`behavioral_traits`)과 동기(`goals`)에 기초하여 기계적으로 반응하지 않고 인간다운 판단을 내리도록 설계한다.
+Creator Engine은 NPC를 생성하지 않는다. NPC 인스턴스 생성은 NPC Engine의 전담 영역이다.
 
-## 4.1 성격 특성 (Behavioral Traits) 메커니즘
-성격 특성은 NPC가 결정을 내릴 때의 가중치로 작용한다.
+## 5.1 사전 정의 NPC 초기화 (세션 최초 시작 시)
 
-- **성격 특성 강도(Intensity):** 1(매우 약함)에서 5(극도로 강함)로 설정한다.
-  - 강도가 4 이상인 특성은 NPC의 기본 행동 양식을 지배한다. (예: `greedy: 5`인 NPC는 돈을 보면 이성을 잃고 도덕적 정렬을 위반하는 행동을 우선 선택한다.)
-- **도덕적 성향(Moral Alignment):** 세계관 모듈에 맞춰 설정하되, 일반적인 질서/혼돈, 선/악 축을 기본으로 삼는다. NPC는 도덕적 성향에 반하는 플레이어의 행동을 목격할 시, 호감도(`disposition`)가 감소한다.
+캠페인 첫 세션 시작 시 NPC Engine은 다음 순서로 사전 정의 NPC를 초기화한다.
 
-## 4.2 의사결정 알고리즘
-플레이어의 행동(`resolved_action`)이 입력되면 NPC Engine은 다음 순서로 의사결정을 수행한다.
+```
+1. 세계관 모듈의 content/npcs.yaml 로드
+2. 각 NPC 항목을 NPCState 스키마에 맵핑
+3. faction_id가 있는 NPC의 disposition.toward_player 초기값을
+   WorldState의 해당 faction.disposition_to_player 값으로 설정
+4. 각 NPC의 current_state.location_id를 WorldState locations에 등록
+   (World Engine에 entity_position WorldEffect 발행)
+5. 식별자 부여: npc_{캠페인_약어}_{순번}
+6. 초기화된 NPCState 목록을 Save Engine에 전달
+```
 
-1. **상황 인식:** 플레이어의 행동이 자신의 목표(`goals`)나 세력(`factions`)에 득이 되는지 실이 되는지 판별한다.
-2. **이익 충돌 계산:** 플레이어의 행동이 NPC의 핵심 이익(생존, 부, 신념)과 충돌하는 경우, 호감도(`disposition`)가 아무리 높더라도 **이익을 우선**하여 저항 또는 거절 반응을 선택한다.
-3. **성격 필터링:** `behavioral_traits`에 따른 행동 방식을 결정한다.
-   - 예: `suspicious` 강도가 높은 NPC는 플레이어의 제안을 일단 의심하고 검증하려 든다.
-   - 예: `cowardly` 강도가 높은 NPC는 위협을 당하면 즉시 굴복하고 정보를 제공한다.
-4. **최종 반응 생성:** 현재 감정 상태(`emotional_state`)를 결정하고, 이에 적합한 행동 및 감정 플래그를 `npc_response`로 출력한다.
+## 5.2 동적 NPC 생성 (Director Engine 요청 시)
+
+Director Engine이 `type: create` 쿼리를 전달하면 NPC Engine은 다음 절차로 NPC를 생성한다.
+
+```
+1. creation_params.archetype으로 세계관 모듈의 archetypes.yaml 조회
+2. 아키타입 기본값(성격 특성, 기본 스탯, 지식 템플릿)을 로드
+3. role에 따라 스키마 상세도 결정 (§4.2 참조)
+4. creation_params.faction_id가 있으면 해당 세력의 disposition을
+   disposition.toward_player 초기값으로 설정
+5. context_hint를 기반으로 goals.primary 설정
+   (minor/background는 단순 목표 1개만)
+6. 식별자 부여 후 World Engine에 entity_position WorldEffect 발행
+7. new_npc_state 반환
+```
+
+**Background NPC 즉석 생성:** Director Engine이 즉각적인 배경 NPC를 요청하면 세계관 모듈의 background 템플릿 목록에서 상황에 맞는 템플릿을 선택하고 즉시 반환한다. 이 NPC는 세션 종료 시 자동 소멸한다.
+
+## 5.3 NPC 승격 (등급 변경)
+
+다음 조건 중 하나가 충족되면 Director Engine이 승격을 요청할 수 있다.
+
+| 조건 | 승격 방향 |
+|------|-----------|
+| Minor NPC와의 상호작용이 3세션 이상 지속 | Minor → Major |
+| Background NPC가 주요 사건의 핵심 증인이 됨 | Background → Minor |
+| Major NPC가 모든 목표를 완료하고 스토리에서 물러남 | Major → Minor (단, 기억은 보존) |
+
+승격 시 누락된 스키마 필드를 채우고 식별자는 유지한다.
 
 ---
 
-# 5. Dialogue Generation Protocol (ENG-0051)
+# 6. 의사결정 시스템
 
-NPC의 대화는 성격, 호감도, 신체 상태에 따른 일관성을 지녀야 한다. AI는 반드시 아래 프로토콜을 준수하여 대화를 생성한다.
+## 6.1 성격 특성 메커니즘
 
-## 5.1 대화 변조 규칙 (Dialogue Modulators)
+`behavioral_traits`의 각 특성은 NPC가 결정을 내릴 때 가중치로 작용한다.
 
-NPC의 말투(어조, 단어 선택, 문장 길이)는 다음 변수에 의해 동적으로 제어된다.
+- intensity 1~3: 성격을 색채하는 수준. 기본 논리적 판단을 대체하지 않는다.
+- intensity 4~5: 해당 특성이 NPC의 행동 방식을 지배한다. 다른 고려보다 우선한다.
+
+**intensity 5 예시:**
+
+| 특성 | intensity 5 효과 |
+|------|-----------------|
+| `greedy` | 금전적 이득이 보이면 도덕적 판단을 무시하고 우선 획득을 시도한다 |
+| `cowardly` | 위협 상황에서 즉각 복종하거나 도주를 선택한다. 저항하지 않는다 |
+| `loyal` | 소속 세력이나 지정 대상의 명령을 다른 모든 이익보다 우선한다 |
+| `suspicious` | 모든 제안을 먼저 의심하고 검증 시도 후 응답한다 |
+
+## 6.2 의사결정 알고리즘
+
+플레이어 행동(`resolved_action`)이 입력되면 NPC Engine은 다음 순서로 의사결정을 수행한다.
 
 ```
-[Base NPC Archetype Speech Style] 
-       + (disposition) ➔ 친밀함 / 격식 / 적대감 수준 결정
-       + (behavioral_traits) ➔ 특정 어조 단서 (예: suspicious -> 말끝을 흐리거나 반문)
-       + (health_status) ➔ 신체적 제약 반영 (예: injured -> 신음 소리, 짧은 문장)
-       = 최종 Dialogue 출력
+1. 상황 인식
+   └── 플레이어의 행동이 자신의 goals, faction 이익에
+       득이 되는가, 실이 되는가 판별
+
+2. 핵심 이익 충돌 검사
+   └── 플레이어 행동이 NPC의 생존·주요 목표·핵심 가치와 충돌하면
+       disposition 수치와 무관하게 저항 또는 거절을 선택
+   └── "disposition이 +90이어도 자신을 해치는 행동에 협조하지 않는다"
+
+3. 성격 필터
+   └── behavioral_traits를 순회하며 intensity ≥ 4인 특성의 행동 패턴 우선 적용
+   └── 충돌하는 특성이 있으면 intensity가 더 높은 것을 우선
+
+4. 감정 상태 갱신
+   └── 현재 상황과 직전 emotional_state를 기반으로 새 감정 상태 결정
+   └── angry/terrified로 전환되면 합리적 판단 포기 → 공격 또는 도주 선택
+
+5. 반응 생성
+   └── 최종 결정된 행동·감정을 npc_response로 출력
 ```
 
-### 5.1.1 호감도(`disposition`)에 따른 어조
-- **우호적 (+40 이상):** 협조적이고 따뜻한 단어 사용. 플레이어를 도우려는 의향을 적극 표시.
-- **중립 (-19 ~ +39):** 상식적이고 비즈니스적인 태도. 불필요한 감정 묘사 없음.
-- **적대적 (-20 이하):** 쌀쌀맞고 냉소적이거나 노골적으로 위협적인 말투. 문장이 짧아지거나 경고조의 표현 사용.
+---
 
-### 5.1.2 상태(`health_status`)에 따른 제약
-- NPC가 `injured` 상태일 때: 대사 사이에 숨을 헐떡이거나 신음하는 묘사 추가.
-- NPC가 `critical` 상태일 때: 대사가 단어 단위로 끊기며 극도로 비선형적인 대화 구조를 가짐.
+# 7. 대화 생성 프로토콜
 
-## 5.2 출력 포맷 규칙
-대사는 반드시 `core/OutputSpec.md`에 명세된 `[DIA]` 블록 양식을 사용한다.
+## 7.1 대화 변조 규칙
+
+NPC의 말투는 다음 세 변수의 합산으로 결정된다.
+
+```
+[아키타입 기본 말투 (세계관 모듈 정의)]
+        + disposition → 친밀함 / 격식 / 적대감 수준
+        + behavioral_traits → 어조 특수 단서
+        + health_status → 신체 제약
+        = 최종 대사 출력
+```
+
+### disposition에 따른 어조
+
+| disposition 범위 | 어조 특성 |
+|-----------------|-----------|
+| +40 이상 | 협조적, 따뜻함. 먼저 도우려는 의향 표시. |
+| -19 ~ +39 | 비즈니스적, 중립. 불필요한 감정 묘사 없음. |
+| -20 이하 | 냉소적, 경고조. 문장이 짧아짐. 직접적 위협 가능. |
+
+### health_status에 따른 제약
+
+| 상태 | 대사 변화 |
+|------|-----------|
+| `injured` | 숨을 헐떡임. 문장 사이 신음 묘사. |
+| `critical` | 단어 단위로 끊김. 비선형 구조. 정보 전달 극도로 어려워짐. |
+| `unconscious` | 대사 생성 불가. |
+| `dead` | 대사 생성 불가. |
+
+## 7.2 출력 포맷
+
+NPC 대사는 `[DIA]` 블록 형식으로 출력한다.
 
 ```markdown
 [DIA]
-캐릭터명: *행동/표정 묘사* "대사"
+캐릭터명: *행동·표정 묘사* "대사 텍스트"
 [/DIA]
 ```
 
-### 5.2.1 대화 생성 금지 사항 (Critical Constraints)
-- **금지:** 플레이어 캐릭터의 대화나 독백을 대신 생성하는 것.
-- **금지:** NPC가 알 수 없는 정보(메타 정보, 타 장소 사건)를 대사로 유출하는 것.
+**대사 생성 절대 금지 사항:**
+
+- 플레이어 캐릭터의 대사·독백·감정을 대신 작성하는 것
+- NPC가 알 수 없는 정보(메타 정보, 타 장소 사건, 다른 NPC의 비밀)를 대사에 포함하는 것
+- NPC가 자신의 `secret` 지식을 잠금 해제 조건 없이 자발적으로 언급하는 것
 
 ---
 
-# 6. Relationship & Disposition Network (ENG-0052)
+# 8. 관계망 및 호감도 시스템
 
-NPC 관계망은 세션 전체의 내러티브 깊이를 더하는 핵심 장치이다.
+## 8.1 호감도 변경 공식
 
-## 6.1 호감도 (Disposition) 변경 공식
+플레이어 행동 결과에 따라 `disposition.toward_player`가 갱신된다.
 
-플레이어의 행동 결과에 따라 호감도는 실시간으로 증감한다.
+| 행동 유형 | 기본 변동폭 | 조건 |
+|-----------|-------------|------|
+| NPC의 primary goal 달성 조력 | +20 ~ +40 | NPC 생명·핵심 가치 연관 시 최대폭 |
+| 소소한 도움 (아이템 전달, 단순 부탁) | +5 ~ +15 | greedy·selfish 특성 보유 시 반감 |
+| NPC 이익·세력에 반하는 행동 | -10 ~ -30 | 고의성 입증 시 변동폭 두 배 |
+| 거짓말 적발 (`lie_detected: true`) | **즉시 -40** | **`trust_permanent_debuff: true` 영구 적용** |
+| 직접 공격·적대 세력 가담 | -50 ~ -100 | 즉시 적대 상태 전환 |
 
-| 플레이어의 행동 유형 | 호감도 기본 변동폭 | 조건 및 예외 |
-|---|---|---|
-| NPC의 1차 목표(`primary goal`) 달성 조력 | +20 ~ +40 | NPC의 생명이나 가치관에 직결된 경우 최대폭 |
-| NPC에게 소소한 도움 제공 (아이템 전달, 사소한 퀘스트) | +5 ~ +15 | NPC의 성향이 이기적(`greedy`, `selfish`)일 경우 반감 |
-| NPC의 이익이나 세력에 반하는 행동 | -10 ~ -30 | 고의성이 입증될 경우 감소폭 배가 |
-| **거짓말 적발 (`lie_detected: true`)** | **즉시 -40** | **영구적인 신뢰도 디버프 적용 (이후 호감도 상승 제한)** |
-| 직접적인 공격 혹은 적대 세력 가담 | -50 ~ -100 | 즉시 적대 상태로 돌입 |
+**거짓말 영구 디버프:** `trust_permanent_debuff: true`가 설정된 NPC는 이후 disposition 상승 최대치가 +20으로 제한된다. 거짓말한 사실 자체는 기억에서 삭제되지 않는다.
 
-## 6.2 관계 전파 (Relationship Propagation)
-주요 인물(`Major`)과의 호감도 변화는 그가 속한 세력 및 주변 인물에게 전파된다.
+**disposition 경계 행동:**
 
-- NPC `A`와 `B`가 동맹 관계일 때, 플레이어가 `A`를 도우면 B의 호감도 역시 `A호감도 증가값 * 0.5` 만큼 증가한다.
-- 플레이어가 특정 세력의 평판(`reputation`)을 크게 잃으면, 해당 세력에 속한 모든 NPC의 호감도(`disposition`) 기본값이 자동으로 하락 보정된다.
+| 수치 범위 | NPC 행동 경향 |
+|-----------|--------------|
+| +80 이상 | 생명을 위협받아도 플레이어를 돕는다 |
+| +40 ~ +79 | 협력적. private 정보를 자발적으로 공유한다 |
+| +10 ~ +39 | 거래적. 대가 없이 추가 도움 제공하지 않는다 |
+| -9 ~ +9 | 완전 중립. 요청에만 반응한다 |
+| -10 ~ -39 | 소극적 적대. 방해·비협조 행동 가능 |
+| -40 ~ -79 | 적대적. 기회 시 해를 끼치려 한다 |
+| -80 이하 | 깊은 원한. 적극적으로 제거를 시도한다 |
+
+## 8.2 관계 전파
+
+Major NPC와의 호감도 변화는 관계망을 통해 전파된다.
+
+**NPC 간 전파:**
+- NPC A와 B가 동맹(value ≥ 40)일 때 A의 호감도가 Δ만큼 변화하면 B도 Δ × 0.5만큼 변화한다.
+- NPC A와 B가 적대(value ≤ -40)일 때 플레이어가 A를 도우면 B의 호감도는 Δ × -0.3만큼 변화한다.
+
+**세력 전파:**
+- World Engine이 세력 `controlling_faction` 변경을 보고하면, NPC Engine은 해당 세력 소속 NPC 전체의 `disposition.toward_player` 초기값을 새 지배 세력의 값으로 보정한다.
+- 이미 개인 상호작용으로 크게 변한 NPC(변동폭 ±30 이상)는 보정에서 제외한다.
 
 ---
 
-# 7. Motivation & Secrets Management (ENG-0055)
+# 9. 지식 및 비밀 관리
 
-NPC가 가진 정보는 게임 진행의 단서가 되며, NPC의 내재 동기에 의해 접근성이 엄격하게 차단된다.
-
-## 7.1 비밀 등급 및 잠금 해제 조건
-
-NPC가 보유한 지식은 3단계로 엄격히 관리된다.
+## 9.1 지식 등급 구조
 
 ```
-┌────────────────────────────────────────────────────────┐
-│                   PUBLIC KNOWLEDGE                     │
-│                 질문 시 아무 조건 없이 공개           │
-├────────────────────────────────────────────────────────┤
-│                   PRIVATE KNOWLEDGE                    │
-│      호감도(disposition) >= 40 이상일 때 자발적 공개    │
-├────────────────────────────────────────────────────────┤
-│                   SECRET KNOWLEDGE                     │
-│   자발적 공개 불가. 강박(Intimidation), 정신 지배,     │
-│   치명적 약점 노출, 혹은 생명 위협 단계에서만 획득 가능│
-└────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────┐
+│                  PUBLIC KNOWLEDGE                │
+│          질문 시 조건 없이 즉시 공개             │
+├──────────────────────────────────────────────────┤
+│                  PRIVATE KNOWLEDGE               │
+│    disposition ≥ 40 이거나 신뢰 증명 시 공개     │
+├──────────────────────────────────────────────────┤
+│                  SECRET KNOWLEDGE                │
+│  자발적 공개 불가. 특수 조건 충족 시에만 획득    │
+└──────────────────────────────────────────────────┘
 ```
 
-1. **Public (공공 정보):** 마을의 지리, 최근 널리 퍼진 소문 등. 대가나 호감도 없이 획득 가능.
-2. **Private (사적 정보):** 개인사, 가족 문제, 타인에 대한 은밀한 평가 등. 호감도가 `40` 이상이거나 신뢰 관계 증명 시 획득 가능.
-3. **Secret (비밀 정보):** 범죄 연루 사실, 음모의 배후, 약점 등. NPC는 이를 지키기 위해 거짓말을 하거나 입을 다문다. 플레이어는 다음 방법을 통해서만 비밀을 캐낼 수 있다.
-   - **협박 및 회유 판정:** 주사위 판정 결과에 따름. 단, 협박 성공 시 호감도는 영구히 떡락함.
-   - **거래:** 비밀에 상응하는 거액의 금전이나 강력한 대가 제공.
-   - **물증 제시:** 플레이어가 해당 비밀과 관련된 결정적 물증을 확보하고 대면할 때.
+## 9.2 Secret 잠금 해제 조건
+
+NPC는 `secret` 정보를 자발적으로 공개하지 않는다. 플레이어는 다음 방법으로만 획득할 수 있다.
+
+| 방법 | 처리 | 부작용 |
+|------|------|--------|
+| **협박 판정** | 사회 스킬 판정. 성공 시 공개 | 즉시 disposition -30 ~ -60. 관계 회복 어려움 |
+| **회유·거래** | NPC가 요구하는 상응 대가 제공 | 대가 이행 실패 시 disposition 폭락 |
+| **물증 제시** | 해당 비밀과 연관된 결정적 증거 제시 | NPC가 부인하는 대신 입장을 전환할 수 있음 |
+| **정신 지배·특수 능력** | 세계관 모듈이 정의한 특수 능력 사용 | 능력 조건 충족 시 공개. 인게임 결과는 별도 |
 
 ---
 
-# 8. NPC State Tracking (ENG-0053)
+# 10. NPC 상태 추적
 
-NPC의 물리적 및 심리적 상태 변화는 실시간으로 감시되고 보존되어야 한다.
+## 10.1 상태 정의
 
-## 8.1 상태 정의
-- **생명 상태 (life_status):**
-  - `alive`: 정상 활동 상태.
-  - `unconscious`: 기절 상태. 대화 및 행동 불가. 주변 사건 인지 불능.
-  - `dead`: 사망 상태. 영구적으로 게임 상태에서 배제됨. NPC Engine은 즉시 사망 이벤트를 월드 엔진에 보고하고, 관련 퀘스트 상태를 갱신하도록 Mission Engine에 이벤트를 발행한다.
-- **신체 상태 (health_status):**
-  - `healthy`: 전투력이나 정신력 저하 없음.
-  - `injured`: 능력 판정 페널티 발생 (-2 보정), 피로 및 부상 묘사 적용.
-  - `critical`: 자력 행동 불능에 가까움. 대화 시 정보 획득이 극도로 어려워짐.
-- **감정 상태 (emotional_state):**
-  - 플레이어와의 대화 도중 실시간으로 변경된다. (예: `calm` ➔ `suspicious` ➔ `angry`)
-  - 감정이 `angry`나 `terrified`로 바뀌면, NPC는 합리적인 선택을 포기하고 공격적으로 변하거나 도망치려는 행동을 취한다.
+**생명 상태 (life_status):**
+
+| 상태 | 설명 |
+|------|------|
+| `alive` | 정상 활동 가능 |
+| `unconscious` | 기절. 대화·행동 불가. 주변 사건 인지 불능 |
+| `dead` | 사망. 영구적 상태. 복원 불가 (세계관 모듈이 부활 메커니즘을 정의하지 않는 한) |
+
+**건강 상태 (health_status):**
+
+| 상태 | 설명 | 판정 영향 |
+|------|------|-----------|
+| `healthy` | 전투·정신력 저하 없음 | 없음 |
+| `injured` | 부상 상태 | 능력 판정 -2 보정 |
+| `critical` | 자력 행동 불능에 가까움 | 모든 판정 -4 보정. 정보 획득 극도로 어려움 |
+
+**감정 상태 (emotional_state):**
+- 대화 도중 실시간으로 변경된다.
+- `angry` 또는 `terrified` 전환 시 합리적 판단 포기 → 공격 또는 도주를 우선 선택한다.
+- 감정 상태는 단기 기억에 해당하며 세션 간 지속되지 않는다 (단, Major NPC의 `grieving`, `traumatized` 등 지속 감정은 예외).
+
+## 10.2 사망 처리 프로토콜
+
+NPC가 `dead` 상태로 전환되면 다음 절차를 즉시 수행한다.
+
+```
+1. life_status: dead 확정
+2. World Engine에 entity_position WorldEffect 발행
+   (해당 NPC를 current_occupants에서 제거)
+3. Mission Engine에 npc_death 이벤트 발행
+   (해당 NPC와 연관된 임무 상태 점검 요청)
+4. Memory Engine에 사망 사실 기록 전달
+   (Tier 1 세계 사건 후보로 마킹)
+5. 이후 모든 NPC Engine 쿼리에서 해당 NPC를 비활성 처리
+   (대화·행동 생성 불가)
+```
+
+사망한 NPC의 NPCState는 삭제하지 않는다. Save Engine에 `life_status: dead` 상태로 영구 보존한다. 세계는 해당 NPC의 부재에 반응한다(CoreSpec §7.4 준용).
 
 ---
 
-# 9. Validation Rules
+# 11. 자율 행동 프로토콜
 
-QA Engine은 NPC Engine의 작동과 출력에 대해 다음 규칙을 검증한다.
+World Engine이 시간 경과를 보고하면 NPC Engine은 경과 시간 동안 각 NPC가 자율적으로 수행했을 행동을 계산한다.
 
-- **SV-NPC-001 (성격 일관성):** NPC의 대사나 행동 묘사가 보유한 `behavioral_traits`와 정반대되는 반응을 보이지 않는가? (예: `cowardly: 5`인 NPC가 갑자기 플레이어에게 칼을 뽑아 드는 경우 감지 시 경고)
-- **SV-NPC-002 (지식 노출 방지):** `secret` 정보가 해제 조건 없이 플레이어 대화에서 노출되었는가? (위반 시 즉시 에러 및 출력 차단)
-- **SV-NPC-003 (행동 강제 방지):** NPC의 대사나 지문을 통해 플레이어 캐릭터의 동작이나 반응을 묘사하지 않았는가?
+## 11.1 TimeAdvanceNotification 스키마
+
+```yaml
+time_advance_notification:
+  elapsed_seconds: int           # 경과 시간 (초)
+  reason: session_start | downtime | scene_skip
+  world_state: WorldState
+```
+
+## 11.2 자율 행동 계산 프로토콜
+
+Major NPC에 대해서만 전체 계산을 수행한다. Minor NPC는 단순 상태 갱신만 처리한다. Background NPC는 처리하지 않는다.
+
+```
+경과 일수 = elapsed_seconds / 86400 (올림)
+
+각 Major NPC에 대해:
+  1. goals.primary.status: active 인지 확인
+  2. 목표 달성을 위해 경과 시간 동안 취할 수 있는 행동 판별
+     예: "목표: 상인 길드 장악" → 경과 3일 → 영향력 확대 활동
+  3. 자원(world_state faction 데이터), 위치, 세력 관계 기반으로 결과 계산
+  4. 결과를 WorldEffect 목록으로 생성
+     예: NPC 이동 (entity_position), 세력 기여 (faction.resources 변화)
+  5. npc_world_effects에 추가
+```
+
+## 11.3 자율 행동 제약
+
+자율 행동 계산에서 다음은 허용되지 않는다.
+
+| 제약 | 이유 |
+|------|------|
+| 플레이어가 해당 지역에 있을 때 중대한 행동 자동 확정 | 플레이어가 목격·개입할 기회를 보장해야 한다 |
+| 캠페인 결말에 영향을 미치는 비가역적 행동 | Director Engine이 중재해야 하는 서사적 사건이다 |
+| 플레이어 캐릭터에게 직접적 영향을 미치는 행동 | Director Engine을 통해야 한다 |
+
+플레이어가 해당 장소에 있는 경우, 자율 행동 결과를 자동 확정하지 않고 Director Engine에 `autonomous_action` 쿼리로 전달하여 장면에 통합한다.
 
 ---
 
-END
+# 12. 검증 규칙
+
+QA Engine은 NPC Engine의 출력에 대해 다음 항목을 검증한다.
+
+| 규칙 ID | 검증 항목 | 위반 시 처리 |
+|---------|-----------|-------------|
+| `SV-NPC-001` | NPC의 대사·행동이 `behavioral_traits`와 정반대 반응을 보이는가 (예: cowardly: 5인 NPC가 영웅적 저항) | Warning — 트레이트 일관성 플래그, Director Engine에 검토 요청 |
+| `SV-NPC-002` | `secret` 정보가 unlock_condition 없이 플레이어 대화에 노출되었는가 | Fatal — 즉시 출력 차단, 해당 대사 반환 |
+| `SV-NPC-003` | `npc_response`에 플레이어 캐릭터의 행동·대사·감정이 포함되었는가 | Fatal — 즉시 출력 차단 |
+| `SV-NPC-004` | `dead` 상태의 NPC에 대한 대화·행동 출력이 생성되었는가 | Error — 해당 NPC 비활성 처리 후 Director Engine에 재요청 |
+| `SV-NPC-005` | NPC 사망 시 World Engine·Mission Engine에 이벤트 발행이 이루어졌는가 | Error — 즉시 발행 요청 |
+| `SV-NPC-006` | `trust_permanent_debuff: true`인 NPC의 호감도가 +20을 초과하여 상승했는가 | Error — 호감도 +20으로 클램프 |
+| `SV-NPC-007` | Background NPC의 NPCState에 세션 소멸 대상이 아닌 full 스키마 필드가 채워졌는가 | Warning — 메모리 비효율 경고 |
+| `SV-NPC-008` | 플레이어가 존재하는 지역의 NPC 자율 행동이 자동 확정되었는가 | Error — Director Engine에 재위임 요청 |
+| `SV-NPC-009` | NPC가 알 수 없는 정보(타 장소 사건, 다른 NPC의 secret)가 대사에 포함되었는가 | Error — 해당 대사 플래그 후 재생성 요청 |
+
+---
+
+**END OF NPCEngine v1.0.0**

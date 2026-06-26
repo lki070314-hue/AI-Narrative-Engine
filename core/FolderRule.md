@@ -26,6 +26,7 @@ AI-Narrative-Engine/
 │   ├── Mission/
 │   ├── NPC/
 │   ├── QA/
+│   ├── Resolution/
 │   ├── Save/
 │   ├── Shadow/
 │   └── World/

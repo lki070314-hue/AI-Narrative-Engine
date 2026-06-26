@@ -31,6 +31,7 @@ Allowed ID prefixes:
 | Object | `obj_ALPHA_` | `obj_ALPHA_001` |
 | Mission | `mis_ALPHA_` | `mis_ALPHA_001` |
 | Action | `act_ALPHA_` | `act_ALPHA_001` |
+| Attempt | `att_ALPHA_` | `att_ALPHA_001` |
 | Memory | `mem_ALPHA_` | `mem_ALPHA_001` |
 | Save | `save_ALPHA_` | `save_ALPHA_001` |
 
@@ -55,6 +56,7 @@ alpha_fixture:
     sealed_door_id: obj_ALPHA_001
     mission_id: mis_ALPHA_001
     action_id: act_ALPHA_001
+    attempt_id: att_ALPHA_001
     memory_id: mem_ALPHA_001
     save_id: save_ALPHA_001
   player_input: "I inspect the sealed door and ask the guard what happened here."
@@ -84,6 +86,8 @@ resolved_action:
   id: act_ALPHA_001
   actor_id: char_ALPHA_001
   source_input: "I inspect the sealed door and ask the guard what happened here."
+  attempt_required: true
+  attempt_request_id: att_ALPHA_001
   intents:
     - type: inspect
       target_ids:

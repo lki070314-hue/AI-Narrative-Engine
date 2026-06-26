@@ -14,6 +14,8 @@ Compiler Engine parses player input, separates game actions from out-of-characte
 
 Compiler Engine does not narrate outcomes, decide hidden information, advance world state, or write player character actions not explicitly declared by the player.
 
+Compiler Engine treats game actions as attempts. It structures declared intent for Resolution Engine evaluation and must not mark uncertain actions as successful.
+
 ---
 
 ## 2. Responsibilities
@@ -62,6 +64,7 @@ compiler_output:
     type: move | inspect | dialogue | attack | skill | item | wait | ooc | unknown
     targets: list[string]
     parameters: map[string: any]
+    attempt_required: bool
     requires_roll: bool
     roll_type: string | null
     dc: int | null
@@ -85,6 +88,7 @@ For Alpha Test 00, use the shared `resolved_action` schema in `tests/Alpha/Alpha
 4. If input asks rules, status, or save/load questions, classify as `ooc`.
 5. If input attempts to access hidden data, classify as `ooc` and return only player-safe information.
 6. If target, method, or intent is missing, ask one specific clarification question.
+7. If the action has meaningful uncertainty, risk, opposition, cost, or world impact, set `attempt_required: true`.
 
 ---
 
@@ -98,6 +102,7 @@ For Alpha Test 00, use the shared `resolved_action` schema in `tests/Alpha/Alpha
 | `SV-CMP-004` | Action does not expose hidden or meta information. | Return `ooc` with safe response. |
 | `SV-CMP-005` | Irreversible action is explicit. | Return `needs_clarification`. |
 | `SV-CMP-006` | Module-specific constraints are respected. | Return `invalid` with non-meta reason. |
+| `SV-CMP-007` | Uncertain actions are marked as attempts instead of assumed success. | Set `attempt_required: true`. |
 
 ---
 

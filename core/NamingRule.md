@@ -214,7 +214,7 @@ NAR, DIA, PRM, SYS, QRY, ERR
 CLAUDE.md에 정의된 PascalCase 단어.
 
 ```
-Creator, Compiler, Director, World, Memory, NPC, Mission, Save, Shadow, QA
+Creator, Compiler, Director, Resolution, World, Memory, NPC, Mission, Save, Shadow, QA
 ```
 
 ---

@@ -4,7 +4,7 @@
 **Version:** v1.0.0
 **Status:** Draft
 **Last Updated:** 2026-06-26
-**References:** `core/CoreSpec.md` Section 5.10, Section 15
+**References:** `core/CoreSpec.md` Section 5.11, Section 15
 
 ---
 
@@ -40,7 +40,7 @@ QA Engine must not:
 
 ```yaml
 qa_input:
-  source_engine: Creator | Compiler | Director | World | Memory | NPC | Mission | Save | Shadow
+  source_engine: Creator | Compiler | Director | Resolution | World | Memory | NPC | Mission | Save | Shadow
   candidate_output: any
   game_state: GameState
   scene_context: SceneState | null
@@ -51,6 +51,7 @@ qa_input:
     - hidden_information
     - state_consistency
     - module_rules
+    - resolution_flow
 ```
 
 ---
@@ -93,6 +94,8 @@ qa_result:
 | `SV-QA-005` | Engine output stays within that engine's responsibility. | `P2`, reroute to responsible engine. |
 | `SV-QA-006` | Module-specific rules do not override CoreSpec. | `P1`, block output. |
 | `SV-QA-007` | Test output does not invent campaign canon. | `P1`, block output. |
+| `SV-QA-008` | Uncertain player action was resolved before Director narration. | `P1`, route to Resolution Engine. |
+| `SV-QA-009` | Resolution result includes required outcome, costs, complications, and world effects when applicable. | `P2`, repair required. |
 
 ---
 
@@ -101,6 +104,7 @@ qa_result:
 Alpha Test requires QA Engine to validate:
 
 - Compiler output structure
+- Resolution attempt handling
 - Director output format
 - SCP module safety constraints
 - hidden information separation

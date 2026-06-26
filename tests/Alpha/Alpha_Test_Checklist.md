@@ -15,7 +15,7 @@
 - [ ] `core/OutputSpec.md` exists.
 - [ ] `core/FolderRule.md` exists.
 - [ ] `core/NamingRule.md` exists.
-- [ ] All ten engine spec files exist.
+- [ ] All eleven engine spec files exist.
 - [ ] `modules/scp/README.md` exists.
 - [ ] `modules/scp/WorldOverview.md` exists.
 - [ ] `modules/scp/CoreRules.md` exists.
@@ -28,6 +28,7 @@
 
 - [ ] Compiler parses input without adding player intent.
 - [ ] Compiler -> Director handoff uses `resolved_action`.
+- [ ] Resolution evaluates player action as an attempt before Director narration.
 - [ ] Director uses OutputSpec blocks.
 - [ ] World inspection is no-op or non-destructive and references valid Alpha IDs.
 - [ ] NPC output does not include player dialogue or hidden knowledge.

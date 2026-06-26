@@ -37,13 +37,14 @@ Current status: Draft v0.1 (specification-first, all content in Markdown).
 The engine is organized into three layers:
 
 ### Engine Layer (`engines/`)
-Ten modular engines, each responsible for a discrete function:
+Eleven modular engines, each responsible for a discrete function:
 
 | Engine | Responsibility |
 |--------|---------------|
 | `Creator/` | Character and world generation |
 | `Compiler/` | Parsing and validation of game state |
 | `Director/` | Scene narration and pacing |
+| `Resolution/` | Difficulty evaluation and action outcome resolution |
 | `World/` | World state and environment |
 | `Memory/` | Campaign history and long-term context |
 | `NPC/` | NPC behavior and dialogue |
@@ -66,7 +67,7 @@ Domain-specific implementations that apply engines to a particular world setting
 
 ```
 core/          ← CoreSpec.md (read first)
-engines/       ← 10 engine specifications
+engines/       ← 11 engine specifications
 modules/       ← World-specific implementations
 prompts/       ← AI system prompts
 templates/     ← Reusable game setup templates

@@ -82,7 +82,7 @@ If the state change is entirely hidden (behind-the-scenes faction shift or undis
 2. Do not expose internal raw variables or values to the player outside the `[SYS]` block.
 3. Do not invent rules or settings unsupported by the active world module.
 4. Do not assume or predetermine the final outcomes of player campaigns.
-5. Do not replace the Director, NPC, Mission, Compiler, Memory, Save, or QA engines.
+5. Do not replace the Director, NPC, Mission, Compiler, Resolution, Memory, Save, or QA engines.
 
 ---
 

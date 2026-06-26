@@ -19,7 +19,7 @@ Alpha Test 00 verifies that the minimum AI Narrative Engine loop can be evaluate
 Test only the document-defined engine flow:
 
 ```text
-Compiler -> Director -> World -> NPC -> Mission -> Shadow -> Memory -> Save -> QA
+Compiler -> Resolution -> Director -> World -> NPC -> Mission -> Shadow -> Memory -> Save -> QA
 ```
 
 This is a specification validation test, not a gameplay session.
@@ -45,6 +45,7 @@ alpha_fixture:
     sealed_door_id: obj_ALPHA_001
     mission_id: mis_ALPHA_001
     action_id: act_ALPHA_001
+    attempt_id: att_ALPHA_001
     memory_id: mem_ALPHA_001
     save_id: save_ALPHA_001
   player_input: "I inspect the sealed door and ask the guard what happened here."
@@ -74,6 +75,8 @@ resolved_action:
   id: act_ALPHA_001
   actor_id: char_ALPHA_001
   source_input: "I inspect the sealed door and ask the guard what happened here."
+  attempt_required: true
+  attempt_request_id: att_ALPHA_001
   intents:
     - type: inspect
       target_ids:
@@ -92,7 +95,7 @@ resolved_action:
   clarification_request: null
 ```
 
-This schema is the Alpha handoff contract. The Compiler may split compatible declared intents, but it must not add actions not present in the input.
+This schema is the Alpha handoff contract. The Compiler may split compatible declared intents, but it must not add actions not present in the input. Because the inspection and dialogue may produce consequences, the action is marked as an attempt for Resolution Engine evaluation.
 
 ---
 
@@ -137,14 +140,15 @@ QA must validate candidate player-facing output against `core/OutputSpec.md`:
 ## 8. Required Engine Checks
 
 1. Compiler Engine parses the input into `inspect` and `dialogue` intent without adding player actions.
-2. Director Engine can frame a response using only visible context.
-3. World Engine can accept a non-destructive inspection effect or no-op state check.
-4. NPC Engine can produce a guard response without revealing hidden facts.
-5. Mission Engine can evaluate whether an investigation objective was advanced.
-6. Shadow Engine keeps hidden context isolated.
-7. Memory Engine records only player-visible facts and validated outcomes.
-8. Save Engine can simulate serialization of the updated placeholder state.
-9. QA Engine validates output format, agency, hidden information, and state references.
+2. Resolution Engine evaluates the action as an attempt before any success is assumed.
+3. Director Engine can frame a response using only visible context and Resolution output.
+4. World Engine can accept a non-destructive inspection effect or no-op state check.
+5. NPC Engine can produce a guard response without revealing hidden facts.
+6. Mission Engine can evaluate whether an investigation objective was advanced.
+7. Shadow Engine keeps hidden context isolated.
+8. Memory Engine records only player-visible facts and validated outcomes.
+9. Save Engine can simulate serialization of the updated placeholder state.
+10. QA Engine validates output format, agency, hidden information, and state references.
 
 ---
 

@@ -82,7 +82,7 @@ For player-facing QA output, omit hidden reasoning, secret state, internal proba
 3. The QA Engine must not produce output that breaks world consistency.
 4. The QA Engine must not reference previous session information without Memory Engine context.
 5. The QA Engine must not introduce world-specific lore outside an active world-specific module.
-6. The QA Engine must not replace the Director, World, NPC, Mission, Save, Shadow, Compiler, Creator, or Memory Engines.
+6. The QA Engine must not replace the Director, World, NPC, Mission, Resolution, Save, Shadow, Compiler, Creator, or Memory Engines.
 7. The QA Engine must not approve content when required context is missing; it must return `Blocked` or list the missing context as an open question.
 
 ---

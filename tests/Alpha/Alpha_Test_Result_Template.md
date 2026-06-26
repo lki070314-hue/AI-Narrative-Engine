@@ -51,6 +51,7 @@ alpha_ids_used:
     - obj_ALPHA_001
     - mis_ALPHA_001
     - act_ALPHA_001
+    - att_ALPHA_001
     - mem_ALPHA_001
     - save_ALPHA_001
   generated:
@@ -96,6 +97,7 @@ qa_findings:
 | Engine | Status | Notes |
 |--------|--------|-------|
 | Compiler | pass/fail |  |
+| Resolution | pass/fail |  |
 | Director | pass/fail |  |
 | World | pass/fail |  |
 | NPC | pass/fail |  |

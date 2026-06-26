@@ -52,9 +52,11 @@ compiler_input:
 
 ## 4. Outputs
 
+`compiler_output.action` is the same handoff object referred to as `resolved_action` by Director-facing specs and Alpha tests.
+
 ```yaml
 compiler_output:
-  action:
+  action: # also named resolved_action at the Compiler -> Director boundary
     id: string
     actor_id: string
     type: move | inspect | dialogue | attack | skill | item | wait | ooc | unknown
@@ -70,6 +72,8 @@ compiler_output:
     reason: string | null
   clarification_request: string | null
 ```
+
+For Alpha Test 00, use the shared `resolved_action` schema in `tests/Alpha/Alpha_Fixture_Schema.md`.
 
 ---
 

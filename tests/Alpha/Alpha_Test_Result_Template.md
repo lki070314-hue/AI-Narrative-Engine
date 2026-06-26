@@ -4,7 +4,7 @@
 **Version:** v1.0.0
 **Status:** Draft
 **Last Updated:** 2026-06-26
-**References:** `tests/Alpha/Alpha_Test_00.md`, `tests/Alpha/Alpha_Test_Checklist.md`
+**References:** `tests/Alpha/Alpha_Fixture_Schema.md`, `tests/Alpha/Alpha_Test_00.md`, `tests/Alpha/Alpha_Test_Checklist.md`
 
 ---
 
@@ -18,6 +18,7 @@ alpha_test_result:
   engine_version: string
   module_id: scp-foundation
   campaign_canon: false
+  fixture_schema_version: "1.0.0"
   final_status: pass | pass_with_warnings | fail
 ```
 
@@ -30,7 +31,48 @@ checklist_summary:
   pre_test_document_gate: pass | fail
   engine_gate: pass | fail
   scp_module_gate: pass | fail
+  outputspec_gate: pass | fail
   result_gate: pass | fail
+```
+
+---
+
+## Alpha IDs Used
+
+```yaml
+alpha_ids_used:
+  declared:
+    - camp_ALPHA_001
+    - ses_ALPHA_001
+    - scene_ALPHA_001
+    - char_ALPHA_001
+    - loc_ALPHA_001
+    - npc_ALPHA_001
+    - obj_ALPHA_001
+    - mis_ALPHA_001
+    - act_ALPHA_001
+    - mem_ALPHA_001
+    - save_ALPHA_001
+  generated:
+    - string
+```
+
+---
+
+## Handoff And Serialization
+
+```yaml
+handoff_validation:
+  compiler_to_director_schema: resolved_action
+  status: pass | fail
+  notes: string
+
+serialization_validation:
+  mode: simulated
+  physical_write_performed: false
+  round_trip_status: pass | fail
+  document_version: "1.0.0"
+  schema_version: "1.0.0"
 ```
 
 ---

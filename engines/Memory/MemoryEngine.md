@@ -3,6 +3,10 @@
 ## Status
 Draft v0.1
 
+## Alpha Document Version
+
+For Alpha Test 00 documentation validation, `memory_archive.metadata.schema_version` uses `"1.0.0"` and is aligned with Save Engine `save_file.metadata.document_version`. This note does not change runtime behavior.
+
 ---
 
 # 1. Purpose
@@ -51,6 +55,7 @@ Memory Engine은 처리를 마친 후 다음 데이터를 생성하여 Director 
 memory_archive:
   # 1. 메타데이터
   metadata:
+    schema_version: "1.0.0"         # Alpha Test 00 document schema version
     last_updated_session: int
     total_sessions: int
     compression_count: int

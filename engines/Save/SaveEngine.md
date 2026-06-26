@@ -3,6 +3,10 @@
 ## Status
 Draft v0.1
 
+## Alpha Document Version
+
+For Alpha Test 00 documentation validation, `save_file.metadata.document_version` uses `"1.0.0"` and is aligned with Memory Engine `memory_archive.metadata.schema_version`. Alpha Test 00 uses simulated serialization and does not require a physical save-file write. This note does not change runtime behavior.
+
 ---
 
 # 1. Purpose
@@ -54,6 +58,7 @@ save_file:
   # 1. 메타데이터 (Metadata)
   metadata:
     version: "1.0.0"                # Save Engine의 명세 버전
+    document_version: "1.0.0"       # Alpha Test 00 document schema version
     timestamp: "2026-06-26T15:10:36Z" # 저장 시각 (ISO 8601 UTC)
     session_count: 5                # 진행된 총 세션 수 (1부터 시작)
     world_module: "generic"         # 활성화된 세계관 모듈 ID

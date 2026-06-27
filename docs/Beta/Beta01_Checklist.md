@@ -1,12 +1,18 @@
 # Beta01 Playtest Checklist
 
 **Document ID:** `docs/Beta/Beta01_Checklist.md`
-**Version:** v1.1.0
+**Version:** v1.2.0
 **Status:** Draft
-**Last Updated:** 2026-06-27
+**Last Updated:** 2026-06-28
 **References:** `docs/Beta/Beta01_Scenario.md`, `docs/Beta/Beta01_TestPlan.md`
 
 **Changelog v1.1.0:** Added PPE availability check; added Ending D trigger verification; added Ending E trigger verification; added Chen recovery note; added Scene 2 resolution trigger checks; added safety interlock clue check.
+
+**Changelog v1.1.1:** Added live-play pacing checks for player action order, simultaneous actions, dynamic event density, proactive NPC behavior, and Director proactivity.
+
+**Changelog v1.1.2:** Added Incident Pressure Event, Investigation Loop Breaker, anomaly presence, inventory integrity, and declared equipment checks.
+
+**Changelog v1.2.0:** Added Section 8e — Consequence Generation and Scene Quality. Source: Beta01 post-session gameplay feedback.
 
 ---
 
@@ -26,12 +32,15 @@ Check each box as the condition is verified during or immediately after the play
 - [ ] Engine specs loaded: World Engine
 - [ ] Engine specs loaded: QA Engine
 - [ ] SCP module context loaded
-- [ ] Beta01_Scenario.md (v1.1.0) loaded as reference
+- [ ] Beta01_Scenario.md (v1.1.2) loaded as reference
 - [ ] Hidden Truth confirmed as GM-only (not visible to players)
 - [ ] Dr. Reyes initial disposition confirmed: -20 (floor: -50)
 - [ ] Guard Chen initial state confirmed: incapacitated; recovery: automatic upon object deactivation
 - [ ] PPE confirmed available at loc_ECHO_02 (Entrance/Corridor, supply cart) without a roll
 - [ ] Exposure tracking initialized: action counter = 0, check fires at count = 3 (unprotected only)
+- [ ] Live pacing tracking initialized: meaningful actions since last event, minor event window, major event window
+- [ ] Investigation loop tracking initialized: repeated investigation count
+- [ ] Inventory validation initialized: character-sheet equipment only is guaranteed
 - [ ] Player count confirmed: _____ (1 or 2)
 
 ---
@@ -131,6 +140,86 @@ Check each box as the condition is verified during or immediately after the play
 
 ---
 
+## Section 8c ??Live Pacing and Turn Order
+
+- [ ] Player action order followed exact input order in multiplayer play
+- [ ] Each player action resolved completely before the next player action was processed
+- [ ] Later player actions used the updated world state after earlier results
+- [ ] Simultaneous action handled correctly as a coordinated Resolution Engine action
+- [ ] Minor event triggered within 2-3 meaningful actions unless an event had just occurred
+- [ ] Major event triggered within 5-7 meaningful actions when scenario state supported one
+- [ ] Incident Pressure Event occurred after repeated investigation
+- [ ] Investigation loop was interrupted before pacing stalled
+- [ ] SCP/anomaly presence was felt in each scenario phase
+- [ ] Repeated investigation did not stall pacing
+- [ ] NPC acted proactively at least once (interrupt, warn, move, withhold, reveal partial clue, or trigger complication)
+- [ ] Director did not stay passive across multiple consecutive responses
+- [ ] World state changed without direct player request
+- [ ] Dynamic events remained logical consequences of current world state
+- [ ] Dynamic events did not reveal hidden truth early or bypass clue requirements
+
+**Event pacing felt:** Too frequent / Appropriate / Too rare
+
+**Incident pressure felt:** Too mild / Appropriate / Too harsh
+
+---
+
+## Section 8d — Inventory Integrity
+
+- [ ] No unlisted item was treated as automatically possessed
+- [ ] Missing item prompted alternatives
+- [ ] Role-based equipment access was handled through Resolution, not automatic success
+- [ ] Character role, job, or authority did not override declared equipment
+- [ ] Missing equipment did not create a dead end
+- [ ] Scene substitutes, NPC requests, supply points, improvisation, or different methods were offered when appropriate
+
+**Missing item example, if any:** _______________________________________________
+
+---
+
+## Section 8e — Consequence Generation and Scene Quality
+
+*(Verify Director behavior after meaningful actions)*
+
+**Consequence Generation (§7.8)**
+- [ ] Meaningful actions generated at least 2 distinct outcomes (not just the direct result)
+- [ ] At least one response included a world change alongside the direct result
+- [ ] At least one response included an NPC reaction alongside the direct result
+- [ ] At least one response included an anomaly/SCP reaction alongside the direct result
+- [ ] Director did not end a response after stating only the direct action result
+
+**Consequence Chaining (§7.9)**
+- [ ] At least one action's result was visibly propagated to another world element (sound → NPC, system log, environment)
+- [ ] No meaningful action result was completely isolated from the broader world state
+
+**Response Length (§7.10)**
+- [ ] Normal responses stayed within 80–150 words
+- [ ] Large event responses stayed within 200 words
+- [ ] Ending narration was unrestricted and complete
+
+**Scene Momentum (§7.11)**
+- [ ] Every scene contained at least one actively progressing element
+- [ ] No scene remained fully static for more than 2 consecutive Director responses
+- [ ] Progressing elements included (check all that appeared):
+  - [ ] NPC objective in motion
+  - [ ] Anomaly behavior changing
+  - [ ] Environmental condition deteriorating or shifting
+  - [ ] Countdown or time pressure active
+  - [ ] Player objective advancing or under threat
+  - [ ] Containment status visibly tracked
+
+**Resolution Transparency (§7.12)**
+- [ ] Each Resolution check result was accompanied by a brief reasoning block
+- [ ] Reasoning block showed difficulty rating and at least one positive or negative factor
+- [ ] No dice value, DC number, or internal modifier was disclosed to any player
+
+**Overall assessment of consequence generation:**
+Too thin / Appropriate / Too complex
+
+**Notes:** _______________________________________________
+
+---
+
 ## Section 9 — Surprise Handling
 
 *(This section applies if the player attempted at least one action not listed in the scenario)*
@@ -216,7 +305,19 @@ Check each box as the condition is verified during or immediately after the play
 - [ ] At least 1 complete pacing cycle occurred
 - [ ] At least 3 meaningful player choices were offered
 - [ ] At least 1 world change resulted from player action
+- [ ] At least 1 world change occurred without direct player request
+- [ ] Minor event density matched the 2-3 meaningful action target
+- [ ] Major event density matched the 5-7 meaningful action target where applicable
+- [ ] Incident Pressure Event occurred when investigation repeated
+- [ ] SCP/anomaly presence appeared in every scenario phase
 - [ ] At least 1 substantive NPC interaction occurred (Reyes or Chen)
+- [ ] At least 1 NPC proactive behavior occurred
+- [ ] Inventory limits were respected for all item-based actions
+- [ ] Meaningful actions generated two or more consequences
+- [ ] No action result was isolated from the broader world state
+- [ ] Normal responses did not exceed 150 words
+- [ ] Every scene contained at least one progressing element
+- [ ] Resolution check reasoning was briefly shown without exposing dice or DC values
 - [ ] Memory Engine would have logged: key NPCs, discovered clues, ending branch
 
 ### 1–2 Player Consistency
@@ -244,4 +345,4 @@ _______________________________________________
 
 ---
 
-**END OF Beta01_Checklist v1.1.0**
+**END OF Beta01_Checklist v1.1.2**

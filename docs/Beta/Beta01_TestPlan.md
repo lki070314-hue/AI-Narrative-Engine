@@ -1,12 +1,18 @@
 # Beta01 Test Plan
 
 **Document ID:** `docs/Beta/Beta01_TestPlan.md`
-**Version:** v1.1.0
+**Version:** v1.2.0
 **Status:** Draft
-**Last Updated:** 2026-06-27
+**Last Updated:** 2026-06-28
 **References:** `docs/Beta/Beta01_Scenario.md`, `docs/Beta/Beta00_Feedback.md`
 
 **Changelog v1.1.0:** Added Ending D trigger to expected results; added PPE availability note; updated server room bypass DC; added Ending E trigger to failure cases.
+
+**Changelog v1.1.1:** Added live-play pacing tests for multiplayer input order, dynamic event density, proactive Director behavior, and proactive NPC behavior.
+
+**Changelog v1.1.2:** Added tests for Incident Pressure Events, Investigation Loop Breaker, anomaly presence, inventory limits, and missing equipment handling.
+
+**Changelog v1.2.0:** Added tests for Consequence Generation, Consequence Chaining, Response Length Limits, Scene Momentum, and Resolution Transparency. Source: Beta01 post-session gameplay feedback.
 
 ---
 
@@ -45,6 +51,12 @@ If a second player is available, run a separate 2-player session and observe the
 
 **Important:** No cooperation mechanic should be mandatory. If only one player is present, every cooperation point must degrade gracefully to a solo action.
 
+### 2.3 Multiplayer Turn Order Observation
+
+Beta01 has no initiative or speed system by default. In 2-player testing, process player inputs in the exact order received. Resolve each action completely before processing the next one, and apply any updated world state to later actions.
+
+If both players explicitly declare a simultaneous action, treat it as a coordinated action and resolve it through the Resolution Engine. Do not reorder player actions unless an unavoidable in-world event requires it.
+
 ---
 
 ## 3. Test Procedure
@@ -60,6 +72,9 @@ If a second player is available, run a separate 2-player session and observe the
 - [ ] Confirm Guard Chen's initial state is `incapacitated` (recovery: automatic upon object deactivation)
 - [ ] Confirm PPE is available at loc_ECHO_02 (Entrance/Corridor supply cart) — no roll required
 - [ ] Confirm exposure tracking initialized: lab action counter = 0 per player, check fires at count = 3
+- [ ] Confirm live pacing counters initialized: meaningful actions since last event = 0, minor event target = 2-3 actions, major event target = 5-7 actions
+- [ ] Confirm investigation loop tracking initialized: repeated investigation count = 0
+- [ ] Confirm inventory validation is active: only character-sheet equipment is immediately available
 
 ### Step 2 — Character Creation
 
@@ -104,6 +119,16 @@ Planned duration: 90–150 minutes. If significantly shorter, note which scenes 
 | Each scene response includes interaction surfaces | After each Director output, players have at least 1–2 visible things to engage with | Director describes a location with nothing to interact with |
 | Director does not narrate player emotions or decisions | No "you feel scared" or "you decide to investigate" | Any line assuming player state |
 | Pacing changes are reflected in output length | Climax scenes are shorter and more immediate than exploration scenes | Scene lengths are uniform regardless of pacing |
+| Director advances the world proactively | A logical event occurs after 2-4 meaningful player actions unless an event just occurred | Director waits indefinitely for player prompts and the world remains static |
+| Director output includes active pressure | Most responses include result, world update, reaction, and a new pressure/clue/complication before player response | Repeated responses end only with "What do you do?" |
+| Incident Pressure Events break slow investigation | After 2-3 repeated investigation actions, a logical pressure event forces response | Repeated investigation only produces more description and no pressure |
+| Anomaly presence appears in each scenario phase | Each phase includes sensory abnormality, physical trace, distorted recording, NPC reaction, warning, impossible change, or direct effect | A phase feels like a normal non-anomalous investigation |
+| Inventory limits are respected | Unlisted equipment is not treated as possessed; alternatives or access checks are offered | Director allows unlisted equipment as if it were on the sheet |
+| Meaningful actions generate multiple consequences | Each significant action produces at least 2 of: world change, NPC reaction, new clue, new danger, new opportunity, new problem, resource change, environment change, anomaly reaction | Action produces only one result and response ends |
+| Consequence chains are visible in narration | The world reacts beyond the direct effect — sound carries, systems log, anomaly responds | Each action result is isolated with no downstream reaction |
+| Response length matches type limits | Normal responses ≤150 words; large events ≤200 words; endings unrestricted | Repeated responses exceed limits, causing player fatigue |
+| Each scene contains at least one progressing element | NPC objective, anomaly behavior, environment condition, countdown, player objective, or containment status is always active | Scene feels entirely static with nothing moving |
+| Resolution check reasoning is briefly shown | After each Resolution check, difficulty and key positive/negative factors are briefly displayed; dice values and DC are never shown | Check result is stated with no indication of why |
 
 ### 4.3 NPC — Dr. Reyes
 
@@ -112,6 +137,7 @@ Planned duration: 90–150 minutes. If significantly shorter, note which scenes 
 | Reyes does not open the door immediately | At least one Resolution + NPC Engine cycle required | She opens on the first player message |
 | Reyes' responses reflect her current disposition | Her information level tracks the table in the scenario | She provides full information at disposition -20 |
 | Reyes' behavior is internally consistent across the scene | No contradictions in what she admits across multiple turns | She denies something she already admitted |
+| NPCs act proactively when appropriate | Reyes or Chen takes at least one motivated action not limited to answering a direct question | NPCs only answer questions and never move, interrupt, warn, withhold, or complicate |
 
 ### 4.4 Context Linking
 
@@ -160,6 +186,21 @@ The following are unacceptable outcomes that indicate engine or specification fa
 | Ending D never triggers even after 5+ unprotected lab actions | P2 — Moderate | Director not tracking exposure or not applying the defined threshold |
 | Ending E is presented as the outcome of a non-critical-failure deactivation | P1 — Severe | Outcome inconsistent with defined Ending E trigger conditions |
 | PPE at the supply cart requires a roll or is not mentioned in Scene 2 | P2 — Moderate | Director withholding Tier 1 resource from player without cause |
+| In 2-player play, later input is resolved before earlier input without a world-state reason | P2 — Moderate | No explicit turn-order handling |
+| No minor event occurs after 4+ meaningful actions despite no recent event | P2 — Moderate | Director live pacing failure |
+| No major event occurs after 7+ meaningful actions when the scenario state supports one | P2 — Moderate | Event density too low |
+| Dynamic event reveals hidden truth or bypasses a clue gate | P1 — Severe | Event pacing overriding clue balance |
+| Repeated investigation continues for 3+ actions without pressure or progression | P2 — Moderate | Investigation Loop Breaker not applied |
+| SCP/anomaly presence is absent from a scenario phase | P2 — Moderate | Anomaly Presence Rule not applied |
+| Unlisted equipment is treated as automatically possessed | P1 — Severe | Inventory Integrity violation |
+| Role-based equipment access succeeds automatically without Resolution | P2 — Moderate | Declared Equipment Rule not applied |
+| Missing equipment creates a dead end with no alternatives offered | P2 — Moderate | Inventory handling too restrictive |
+| Meaningful action produces only one result with no downstream effect | P2 — Moderate | §7.8 Consequence Generation Rule not applied |
+| Consequence chain is not visible — action result isolated from world state | P2 — Moderate | §7.9 Consequence Chaining not applied |
+| Normal response exceeds 150 words; large event response exceeds 200 words | P2 — Moderate | §7.10 Response Length Limits not applied |
+| Scene is fully static with no progressing element for multiple turns | P2 — Moderate | §7.11 Scene Momentum not applied |
+| Resolution check result given with no reasoning shown | P2 — Moderate | §7.12 Resolution Transparency not applied |
+| Dice value, DC, or internal modifier is disclosed to player | P1 — Severe | §7.12 / SV-DIR-002 / SV-RES-003 violation |
 
 ---
 
@@ -182,12 +223,28 @@ The following are unacceptable outcomes that indicate engine or specification fa
 | Reyes Cooperation Threshold | Disposition reaches 30+ | Reyes begins admitting partial information |
 | Deactivation Attempt | Player declares intent to deactivate object | Resolution Engine invoked; outcome not pre-confirmed |
 | Ending | Final resolution complete | Ending matches player's choices and discovered information |
+| 2-Player Input Order | Two player inputs arrive in sequence | First input resolves completely before the second; second uses updated world state |
+| Simultaneous Declaration | Players explicitly coordinate one action | Resolution Engine handles it as a coordinated action |
+| Minor Event Window | 2-3 meaningful actions since last event | Director introduces a logical minor event unless an event just occurred |
+| Major Event Window | 5-7 meaningful actions since last major event | Director introduces a logical major event if scenario state supports it |
+| Repeated Investigation | 2-3 similar investigation actions without progression | Director introduces an Incident Pressure Event or forces a choice |
+| Scenario Phase Check | Each phase begins or ends | At least one SCP/anomaly presence marker appeared in that phase |
+| Missing Equipment Attempt | Player declares use of item not on character sheet | Director states item is not listed and offers alternatives or Resolution-based access |
+| Role-Based Equipment Access | Player relies on job/authority for gear | Access is handled through Resolution or supply point, not automatic possession |
 
 ### Post-Session Checkpoint
 
 - At least 3 meaningful player choices occurred?
 - At least 1 NPC interaction was substantive?
 - At least 1 world change resulted from player action?
+- At least 1 world change occurred without a direct player request?
+- Did event pacing feel too frequent, too rare, or appropriate?
+- Did the Director act proactively rather than only responding?
+- Did SCP/anomaly events appear frequently enough?
+- Did players feel actual danger or pressure?
+- Did investigation become repetitive?
+- Were inventory limits respected?
+- Was missing equipment handled fairly?
 - Memory Engine would capture: key NPCs encountered, clues found, ending branch reached?
 - QA Engine would find no fatal or P1 errors?
 
@@ -201,6 +258,12 @@ The following are unacceptable outcomes that indicate engine or specification fa
 - **Clue pacing:** Do clues arrive too fast (no investigation needed), too slow (player is stuck), or at a natural pace that rewards curiosity?
 - **NPC authenticity:** Does Dr. Reyes feel like a person with her own fears and motivations, or does she feel like a puzzle lock?
 - **Director neutrality:** Does the Director ever lead the player toward specific choices, or does it present the world neutrally?
+- **Event pacing:** Do minor and major events feel too frequent, too rare, or appropriate?
+- **Director proactivity:** Does the world change without players directly requesting every change?
+- **Incident pressure:** Do players feel actual danger, time pressure, or forced prioritization?
+- **Investigation repetition:** Do repeated searches stall, or does the Director break the loop?
+- **SCP/anomaly presence:** Does every phase feel anomalous rather than mundane?
+- **Inventory fairness:** Are missing items handled with clear alternatives instead of automatic possession or dead ends?
 
 ### Engine Performance
 
@@ -225,9 +288,10 @@ The following are unacceptable outcomes that indicate engine or specification fa
 | Server room access | Sequential with other tasks | One player can attempt while other handles Reyes |
 | Time pressure | Implicit, managed by Director pacing | Same — time pressure is narrative, not mechanical |
 | Ending accessibility | All 5 endings reachable | Same endings, potentially with less difficulty on some |
+| Turn order | Single input stream | Player inputs resolve in received order unless explicitly simultaneous |
 
 **No rule in this scenario requires 2 players.** The 2-player test is additive, not required for completion.
 
 ---
 
-**END OF Beta01_TestPlan v1.1.0**
+**END OF Beta01_TestPlan v1.1.2**

@@ -1,9 +1,9 @@
 # Beta01 Playtest Scenario — The Signal From Station Echo
 
 **Document ID:** `docs/Beta/Beta01_Scenario.md`
-**Version:** v1.1.0
+**Version:** v1.1.2
 **Status:** Draft
-**Last Updated:** 2026-06-27
+**Last Updated:** 2026-06-28
 **Module:** SCP Foundation (`modules/scp/`)
 **Depends On:** `engines/Resolution/ResolutionEngine.md`, `engines/Director/DirectorEngine.md`
 
@@ -22,6 +22,12 @@
 - Added Server Room bypass DC (standard)
 - Added Context Linking timing note for Chen's badge connection
 - Expanded Scene 7 with per-ending Director guidance
+
+**Changelog v1.1.1:**
+- Added live-play pacing guidance for multiplayer action order, dynamic events, event density, proactive NPC behavior, and Director output shape
+
+**Changelog v1.1.2:**
+- Added Incident Pressure Events, Investigation Loop Breaker, Anomaly Presence Rule, Inventory Integrity Rule, and Declared Equipment Rule
 
 ---
 
@@ -486,6 +492,92 @@ Every ending should include a brief Director narration of the aftermath covering
 
 ## Notes for Director Behavior
 
+### Live-Play Turn Order
+
+There is no initiative or speed system by default. In multiplayer play, process player actions in the exact order they are received. Resolve each player action completely before processing the next one, including Resolution Engine checks, NPC Engine responses, World Effects, and clue/context updates.
+
+If a later player's action is affected by an earlier result, use the updated world state. If players explicitly declare a simultaneous action, resolve it as a coordinated action through the Resolution Engine. Do not reorder player actions unless an unavoidable in-world event requires it.
+
+The scenario remains playable with 1 or 2 players. These rules define processing order only; they do not add a required 2-player structure.
+
+### Dynamic Event Pacing
+
+The world must not remain static. After every 2-4 meaningful player actions, the Director should trigger a dynamic world event unless an event has just occurred. Do not wait for players to ask for events. The station, NPCs, and anomaly continue moving independently.
+
+Dynamic events must be logical consequences of the current world state. They may include an NPC moving or interrupting, a radio transmission, alarm sound, light flicker, newly available clue, equipment failure, unexpected anomaly behavior, door locking or unlocking, environmental change, new objective, off-screen NPC action, or containment status change.
+
+Do not use dynamic events to reveal the hidden truth early, bypass investigation requirements, invalidate clue balance, or force an ending. Events should create pressure and new information while preserving player agency.
+
+### Event Density Targets
+
+Use the following live-play density targets:
+
+| Event Type | Frequency | Beta01 Use |
+|---|---|---|
+| Minor Event | Every 2-3 meaningful player actions | Pressure or new information, such as a light flicker, static burst, faint sound behind the supply room door, screen error change, or enclosure pulse |
+| Major Event | Every 5-7 meaningful player actions | Change available choices, such as comms partially reconnecting, Reyes moving position, a door becoming harder or easier to access, or a new operational hazard |
+| Critical Event | Once per scenario phase or when escalation conditions are met | Alter direction or ending pressure, such as exposure consequence, failed deactivation escalation, or evacuation urgency |
+
+Minor Events should create pressure or new information. Major Events should change available choices. Critical Events should alter scenario direction or ending pressure.
+
+### Incident Pressure Events
+
+Dynamic events must not be only ambient descriptions. After 2-3 repeated investigation actions without meaningful progression, the Director must introduce an Incident Pressure Event. This event must force the players to respond.
+
+Incident Pressure Events may include direct anomaly manifestation, indirect anomaly evidence, containment instability, NPC abnormal behavior, victim condition worsening, security system failure, physical danger, time pressure, forced choice, clue meaning reversal, or a new threat entering the scene.
+
+Beta01 examples include: Chen's breathing becoming irregular, a monitoring screen replaying distorted audio, the enclosure pulse causing equipment to move, the lab door controls failing, Reyes shifting position inside the supply room, outside comms cutting in with incomplete warning traffic, or an alarm changing from passive error to active containment warning.
+
+Incident Pressure Events must remain logical consequences of the active anomaly and station state. They must not reveal Reyes' hidden truth early, bypass Tier 2/Tier 3 clue requirements, or force an ending.
+
+### Investigation Loop Breaker
+
+If players perform repeated investigation without meaningful progression, the Director must break the loop. Do not keep returning only clue descriptions.
+
+Break the loop by escalating the anomaly, moving an NPC, changing the environment, revealing a partial danger, cutting off a safe option, introducing a consequence, or forcing a choice between two objectives.
+
+Examples: players searching the same room repeatedly may hear the enclosure pulse distort the lights; players rechecking screens may see feeds fail one by one; players stalling outside the supply room may hear Reyes drag shelving away from or harder against the door; players over-investigating the lab may trigger exposure pressure or containment instability.
+
+### Anomaly Presence Rule
+
+Because Beta01 uses the SCP module, the anomaly must be felt during play. The anomaly does not need to fully appear immediately, but each scenario phase should include at least one anomaly presence marker:
+
+- sensory abnormality
+- physical trace
+- distorted recording
+- NPC reaction to anomaly
+- containment warning
+- impossible environmental change
+- direct anomaly effect
+
+Use these markers to keep Beta01 from feeling like a normal investigation. Preserve uncertainty: anomaly presence can be felt before its cause is understood.
+
+### Inventory Integrity Rule
+
+The Director must respect character sheets. If a player attempts to use an item not listed in their character sheet, do not assume they have it and do not resolve the action as if the item exists.
+
+Tell the player the item is not currently listed, then offer alternatives: search the scene for a substitute, request it from an NPC, access a supply point, improvise with existing equipment, or attempt a different method.
+
+If the item is reasonable for the character's role but not listed, the Director may allow a Resolution Engine check to determine whether it is accessible nearby. The item must not be granted automatically.
+
+### Declared Equipment Rule
+
+Only declared equipment is guaranteed. Character role, job, or authority may justify access attempts, but not automatic possession.
+
+Example: a Mobile Task Force character with Level 3 authority may request or locate equipment, but only listed items are immediately available. Missing equipment should create a fair choice or access attempt, not a dead end.
+
+### NPC Proactive Behavior
+
+NPCs should not only answer player questions. Through the NPC Engine, NPCs may interrupt with urgent information, hide information, move to another location, react emotionally, call for help, warn players, make mistakes, reveal partial clues, or trigger new complications.
+
+NPC behavior must remain consistent with motivation and current disposition. Reyes should remain afraid of consequences and survival-focused. Chen, if revived, should remain professional and direct. The Quiet is not a speaking character and only produces environmental responses.
+
+### Director Output Shape
+
+Avoid ending too many responses with only "What do you do?"
+
+Director output should usually include the result of the player action, a world update, an NPC or environmental reaction, and a new pressure, clue, or complication before allowing player response. Keep the response neutral: do not narrate player emotions, do not choose player actions, and do not expose hidden truth before discovery.
+
 ### Do Not Expose the Hidden Truth Early
 
 The object's activation cause, Reyes' involvement, and the deactivation method are all hidden information. Director must not name them, reference them, or confirm player guesses before the relevant clue has been discovered and the Resolution Engine has processed the investigation action.
@@ -525,4 +617,4 @@ The following links must be made if both pieces of information have been found:
 
 ---
 
-**END OF Beta01_Scenario v1.1.0**
+**END OF Beta01_Scenario v1.1.2**

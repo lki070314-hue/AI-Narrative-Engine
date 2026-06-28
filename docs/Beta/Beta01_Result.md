@@ -99,6 +99,10 @@ Beta02 should focus on making small actions create more varied, meaningful, and 
 
 ## 7. Lessons Learned
 
+**Key lesson: the problem was not lack of choices, but lack of consequence chaining.**
+
+Players had choices. The issue was that each choice produced too little observable effect on the world, breaking the sense that their actions mattered.
+
 - A playable scenario is not enough; each action must create enough consequence to make the world feel alive.
 - Repeated investigation must be interrupted by pressure, escalation, or scene movement.
 - SCP/anomaly material must appear early and recur during each phase.

@@ -1,8 +1,8 @@
 # Beta02 Preparation
 
 **Document path:** `docs/Beta/Beta02_Preparation.md`  
-**Version:** v0.1.0  
-**Status:** Draft  
+**Version:** v1.0.0  
+**Status:** Release  
 **Last updated:** 2026-06-28
 
 ---
@@ -133,7 +133,71 @@ Beta02 should verify engine behavior, not start from a scenario rewrite. The mai
 - `engines/Director/OutputEngine.md`
 - `docs/Beta/Beta01_Result.md`
 - `docs/Beta/Beta01_LivePatch_Notes.md`
+- `docs/Beta/Beta02_TestPlan.md`
+- `docs/Beta/Beta02_Checklist.md`
 
 ---
 
-**END OF Beta02_Preparation v0.1.0**
+## 12. QA Checklist for Beta02 Director Behavior
+
+Before each playtest session, confirm the following are active:
+
+**Pacing**
+- [ ] Low-impact action counter initialized to 0.
+- [ ] Pacing shift rule active: after 2 consecutive meaningful low-impact actions, Director introduces a pacing shift.
+- [ ] Investigation loop breaker active.
+
+**Consequence**
+- [ ] Consequence generation rule active: meaningful actions produce direct result + at least 2 additional consequences.
+- [ ] Shadow Engine available for delayed/hidden consequences.
+
+**Scene Flow**
+- [ ] Each scene has a defined objective, tension source, and active element before play begins.
+- [ ] Scene transition conditions defined for each scene.
+
+**Output Length**
+- [ ] Output length rule active: normal 80–150 Korean characters, event 150–300, major scene 300–500.
+- [ ] Resolution transparency block format active.
+
+**Inventory**
+- [ ] Only declared equipment is guaranteed.
+- [ ] Alternatives protocol active: search, NPC request, supply access, improvise, or other method.
+
+**Anomaly**
+- [ ] SCP/anomaly presence expected in every scenario phase.
+- [ ] Anomaly behavior tracked as active scene element.
+
+---
+
+## 13. Recommended Playtest Procedure
+
+1. Load all engine specs and sub-engine support docs before starting.
+2. Confirm hidden information is GM-only.
+3. Initialize all tracking counters (pacing, investigation loop, inventory validation).
+4. Run the scenario with 1 player first. Observe Director behavior throughout.
+5. After each scene ends, pause and review pacing, consequence, scene flow, anomaly, output, and inventory checks before continuing.
+6. Note any failed check without adjusting mid-play.
+7. After session ends, complete `Beta02_Checklist.md`.
+8. If time allows, run with 2 players in a separate session and compare pacing behavior under higher action volume.
+9. Report pass/fail per area and list remaining P1–P2 risks.
+
+---
+
+## 14. What to Record During Play
+
+Record the following throughout the session:
+
+- **Pacing shifts:** When each occurred, what triggered it, and what type it was.
+- **Consequence counts:** Per meaningful action, how many distinct effects were produced.
+- **Anomaly presence moments:** When and how anomaly/SCP presence appeared.
+- **Scene transitions:** When scenes changed and what caused the transition.
+- **Output length violations:** Any response that felt too long for the action type.
+- **Inventory incidents:** When unlisted items were used and how it was handled.
+- **Investigation loops:** Any sequence where investigation repeated without shift or change.
+- **Player reactions:** Player comments on tempo, tension, fatigue, or confusion.
+- **Unexpected player actions:** Any action outside scenario planning and how it resolved.
+- **Proactive Director moments:** When the Director moved the world without a player prompt.
+
+---
+
+**END OF Beta02_Preparation v1.0.0**

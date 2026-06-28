@@ -1,10 +1,12 @@
 # Director Engine Specification
 
 **문서 식별자:** `engines/Director/DirectorEngine.md`
-**버전:** v1.1.1
+**버전:** v1.2.0
 **상태:** Draft
 **최종 수정:** 2026-06-28
 **참조:** `core/CoreSpec.md` §4.2, §5.3, §10, §12, §13 / `engines/Resolution/ResolutionEngine.md`
+
+**Changelog v1.2.0:** Added `AnomalyEngine.md` to §7.5.3 Director Support Sub-Engines; added SV-DIR-019 to §10. Source: Beta02 live playtest — anomaly presence identified as primary remaining gap.
 
 **Changelog v1.1.1:** Added §7.5.3 Director Support Sub-Engines referencing Pacing, Consequence, Scene Flow, and Output support documents for Beta02 preparation.
 
@@ -558,6 +560,8 @@ The following Director-side support documents refine live-play behavior without 
 - `engines/Director/SceneFlowEngine.md` - keeps each scene active, interruptible, and transition-ready.
 - `engines/Director/OutputEngine.md` - keeps normal live-play responses concise and consequence-focused.
 
+- `engines/Director/AnomalyEngine.md` - ensures the SCP/anomaly is an active, readable, and independently escalating presence rather than scenery or a subject only NPCs describe.
+
 These support documents operate through existing Director responsibilities and existing engine boundaries. They do not override Resolution outcomes, Shadow Engine hidden-information handling, character sheet inventory limits, or player agency rules.
 
 ## 7.6 장면 전환
@@ -810,7 +814,8 @@ QA Engine은 Director Engine의 출력에 대해 다음 항목을 검증한다.
 | `SV-DIR-016` | 장면에서 진행 중인 모멘텀 요소가 없었는가 | Warning — §7.11 Scene Momentum 미적용 |
 | `SV-DIR-017` | Resolution 판정 결과의 추론이 플레이어에게 드러나지 않았는가 | Warning — §7.12 Resolution 투명성 미적용 |
 | `SV-DIR-018` | 행동의 결과 연쇄가 세계로 전파되지 않았는가 | Warning — §7.9 Consequence Chaining 미적용 |
+| `SV-DIR-019` | SCP/이상 현상이 시나리오 단계에서 부재했거나, 플레이어가 NPC 안내 없이 직접 관찰하고 반응할 수 있는 행동을 보이지 않았는가 | Warning — §7.8 이상 현상 반응 미적용; `AnomalyEngine.md` Presence Rule 및 Observable Behavior 항목 검토 |
 
 ---
 
-**END OF DirectorEngine v1.1.1**
+**END OF DirectorEngine v1.2.0**

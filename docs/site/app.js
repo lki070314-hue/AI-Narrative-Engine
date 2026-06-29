@@ -1,12 +1,13 @@
 const STORAGE_KEY = "ai-narrative-engine-round-state-v1";
 
 const FIREBASE_CONFIG = {
-  apiKey: "",
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: ""
+  apiKey: "AIzaSyBmWI52L6TsvVnBi_etiH2eVU1ZnL9zGjw",
+  authDomain: "ai-narrative-engine.firebaseapp.com",
+  projectId: "ai-narrative-engine",
+  storageBucket: "ai-narrative-engine.firebasestorage.app",
+  messagingSenderId: "554378379851",
+  appId: "1:554378379851:web:4ab14bf1f93b75580cc3ce",
+  measurementId: "G-FTLK71N565"
 };
 
 const PLAYERS = [

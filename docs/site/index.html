@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AI Narrative Engine 라운드 입력 수집기</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div>
+        <p class="eyebrow">AI Narrative Engine</p>
+        <h1>4인 라운드 입력 수집기</h1>
+      </div>
+      <p id="storageStatus" class="storage-status" role="status">저장 상태 확인 중</p>
+    </header>
+
+    <main class="layout">
+      <section class="panel metadata-panel" aria-labelledby="metadataTitle">
+        <div class="section-heading">
+          <h2 id="metadataTitle">GM 라운드 정보</h2>
+          <span id="completionBadge" class="badge badge-waiting">입력 대기</span>
+        </div>
+
+        <div class="metadata-grid">
+          <label>
+            캠페인 제목
+            <input id="campaignTitle" type="text" autocomplete="off" placeholder="예: 검은 기록">
+          </label>
+          <label>
+            세션 번호
+            <input id="sessionNumber" type="number" min="1" step="1" inputmode="numeric">
+          </label>
+          <label>
+            라운드 번호
+            <input id="roundNumber" type="number" min="1" step="1" inputmode="numeric">
+          </label>
+        </div>
+
+        <label class="wide-label">
+          현재 장면 요약
+          <textarea id="sceneSummary" rows="4" placeholder="현재 위치, 위협, NPC, 직전 상황을 짧게 기록합니다."></textarea>
+        </label>
+      </section>
+
+      <section class="panel status-panel" aria-labelledby="statusTitle">
+        <div class="section-heading">
+          <h2 id="statusTitle">제출 현황</h2>
+          <span id="submittedCount">0 / 4</span>
+        </div>
+        <ol id="playerStatusList" class="status-list"></ol>
+      </section>
+
+      <section class="panel input-panel" aria-labelledby="inputTitle">
+        <div class="section-heading">
+          <h2 id="inputTitle">플레이어 입력</h2>
+          <label class="player-select-label">
+            슬롯 선택
+            <select id="playerSelect"></select>
+          </label>
+        </div>
+
+        <div id="selectedPlayerInfo" class="selected-player"></div>
+
+        <label class="wide-label">
+          행동
+          <textarea id="actionInput" rows="4" placeholder="캐릭터가 시도하는 행동을 적습니다."></textarea>
+        </label>
+
+        <label class="wide-label">
+          대사
+          <textarea id="dialogueInput" rows="4" placeholder="캐릭터가 말하는 내용을 적습니다. 없으면 비워둘 수 있습니다."></textarea>
+        </label>
+
+        <label class="wide-label">
+          의도 / 보충 설명
+          <textarea id="intentInput" rows="4" placeholder="행동의 목적, 우선순위, 조건부 처리 요청 등을 적습니다."></textarea>
+        </label>
+
+        <div class="button-row">
+          <button id="saveInputButton" type="button" class="primary">입력 저장</button>
+          <button id="clearPlayerButton" type="button">선택 플레이어 입력 지우기</button>
+          <button id="clearRoundButton" type="button" class="danger">전체 라운드 지우기</button>
+        </div>
+      </section>
+
+      <section class="panel prompt-panel" aria-labelledby="promptTitle">
+        <div class="section-heading">
+          <h2 id="promptTitle">GM / Director 프롬프트</h2>
+          <span id="promptReadyText" class="muted">4명 입력 완료 후 복사할 수 있습니다.</span>
+        </div>
+
+        <textarea id="gmPrompt" rows="18" readonly></textarea>
+
+        <div class="button-row">
+          <button id="copyPromptButton" type="button" class="primary" disabled>GM 프롬프트 복사</button>
+          <button id="exportJsonButton" type="button">라운드 JSON 내보내기</button>
+          <button id="importJsonButton" type="button">라운드 JSON 가져오기</button>
+          <input id="importJsonInput" class="visually-hidden" type="file" accept="application/json,.json">
+        </div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

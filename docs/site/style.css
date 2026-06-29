@@ -36,6 +36,12 @@ body {
   padding: 28px 20px 18px;
 }
 
+.header-status {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+}
+
 .eyebrow {
   margin: 0 0 4px;
   color: var(--accent);
@@ -63,6 +69,10 @@ h2 {
   font-size: 0.9rem;
 }
 
+.storage-status {
+  margin: 0;
+}
+
 .layout {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
@@ -86,6 +96,7 @@ h2 {
 }
 
 .status-panel,
+.order-panel,
 .prompt-panel {
   grid-column: 2;
 }
@@ -106,6 +117,7 @@ h2 {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 140px 140px;
   gap: 12px;
+  margin-top: 14px;
 }
 
 label,
@@ -119,6 +131,10 @@ label,
 
 .wide-label {
   margin-top: 14px;
+}
+
+.room-label {
+  margin-top: 0;
 }
 
 input,
@@ -164,7 +180,8 @@ button:focus-visible {
   font-weight: 700;
 }
 
-.status-list {
+.status-list,
+.order-list {
   display: grid;
   gap: 10px;
   margin: 0;
@@ -172,7 +189,8 @@ button:focus-visible {
   list-style: none;
 }
 
-.status-item {
+.status-item,
+.order-item {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 8px;
@@ -182,17 +200,28 @@ button:focus-visible {
   padding: 11px 12px;
 }
 
-.status-name {
+.status-name,
+.order-name {
   font-weight: 700;
 }
 
-.status-detail {
+.status-detail,
+.order-detail {
   color: var(--muted);
   font-size: 0.85rem;
 }
 
+.empty-state {
+  color: var(--muted);
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  padding: 12px;
+}
+
 .badge,
-.status-chip {
+.mode-badge,
+.status-chip,
+.order-chip {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -204,16 +233,23 @@ button:focus-visible {
   white-space: nowrap;
 }
 
+.mode-local,
 .badge-waiting,
 .status-pending {
   background: #fff7e6;
   color: var(--warning);
 }
 
+.mode-online,
 .badge-complete,
 .status-complete {
   background: #e8f7ef;
   color: var(--success);
+}
+
+.order-chip {
+  background: #eef4ff;
+  color: var(--accent);
 }
 
 .button-row {
@@ -282,6 +318,10 @@ button:disabled {
     flex-direction: column;
   }
 
+  .header-status {
+    justify-items: start;
+  }
+
   .layout {
     grid-template-columns: 1fr;
   }
@@ -289,6 +329,7 @@ button:disabled {
   .metadata-panel,
   .input-panel,
   .status-panel,
+  .order-panel,
   .prompt-panel {
     grid-column: 1;
   }
@@ -314,6 +355,11 @@ button:disabled {
   .player-select-label {
     width: 100%;
     min-width: 0;
+  }
+
+  .status-item,
+  .order-item {
+    grid-template-columns: 1fr;
   }
 
   button {

@@ -12,7 +12,10 @@
         <p class="eyebrow">AI Narrative Engine</p>
         <h1>4인 라운드 입력 수집기</h1>
       </div>
-      <p id="storageStatus" class="storage-status" role="status">저장 상태 확인 중</p>
+      <div class="header-status">
+        <span id="modeBadge" class="mode-badge mode-local">로컬 모드</span>
+        <p id="storageStatus" class="storage-status" role="status">저장 상태 확인 중</p>
+      </div>
     </header>
 
     <main class="layout">
@@ -21,6 +24,11 @@
           <h2 id="metadataTitle">GM 라운드 정보</h2>
           <span id="completionBadge" class="badge badge-waiting">입력 대기</span>
         </div>
+
+        <label class="wide-label room-label">
+          룸 / 캠페인 코드
+          <input id="roomCode" type="text" autocomplete="off" placeholder="예: redaction-session1">
+        </label>
 
         <div class="metadata-grid">
           <label>
@@ -49,6 +57,14 @@
           <span id="submittedCount">0 / 4</span>
         </div>
         <ol id="playerStatusList" class="status-list"></ol>
+      </section>
+
+      <section class="panel order-panel" aria-labelledby="orderTitle">
+        <div class="section-heading">
+          <h2 id="orderTitle">처리 순서</h2>
+          <span class="muted">제출 시간순</span>
+        </div>
+        <ol id="processingOrderList" class="order-list"></ol>
       </section>
 
       <section class="panel input-panel" aria-labelledby="inputTitle">
@@ -101,6 +117,8 @@
       </section>
     </main>
 
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
